@@ -1,0 +1,99 @@
+\begin{table}[!hbt]
+\centering
+\begin{tabular}{|l||c|c|c|c||c|c|c|c||c|c|}
+\hline
+\textit{KB $\rightarrow$} & \multicolumn{4}{|c||}{\textbf{baseline}} & \multicolumn{4}{|c||}{\textbf{LTL}} & \multicolumn{2}{|c|}{\textbf{declare}} \\
+\hline
+\textit{Encoding $\rightarrow$} & \multicolumn{2}{|c|}{\textbf{CF}} & \multicolumn{2}{|c||}{\textbf{CF+R}} & \multicolumn{2}{|c|}{\textbf{CF}} & \multicolumn{2}{|c||}{\textbf{CF+R}} & \multicolumn{2}{|c|}{\textbf{CF+R}} \\
+\hline
+\textit{Predicand $\rightarrow$} & \textbf{CF} & \textbf{R} & \textbf{CF} & \textbf{R} & \textbf{CF} & \textbf{R} & \textbf{CF} & \textbf{R} & \textbf{CF} & \textbf{R}\\
+\hline\hline
+10x2\_1S & 
+62 8
+&
+0 0
+&
+47 4
+&
+\cellcolor[HTML]{E8E8E8}\textbf{73 1}
+&
+\cellcolor[HTML]{C0C0C0}\textbf{65 2}
+&
+0 0
+&
+62 2
+&
+70 0
+&
+25 4
+&
+58 1
+\\
+10x2\_1W & 
+61 1
+&
+0 0
+&
+61 2
+&
+57 7
+&
+\cellcolor[HTML]{C0C0C0}\textbf{66 6}
+&
+0 0
+&
+60 3
+&
+64 6
+&
+57 0
+&
+\cellcolor[HTML]{E8E8E8}\textbf{65 6}
+\\
+10x2\_2S & 
+\cellcolor[HTML]{C0C0C0}\textbf{56 1}
+&
+0 0
+&
+56 1
+&
+\cellcolor[HTML]{E8E8E8}\textbf{70 4}
+&
+54 2
+&
+0 0
+&
+52 6
+&
+69 3
+&
+20 1
+&
+55 0
+\\
+10x2\_2W & 
+62 8
+&
+0 0
+&
+57 10
+&
+44 4
+&
+\cellcolor[HTML]{C0C0C0}\textbf{78 7}
+&
+0 0
+&
+74 3
+&
+\cellcolor[HTML]{E8E8E8}\textbf{52 6}
+&
+21 5
+&
+45 4
+\\
+\hline
+\end{tabular}
+\caption{Old model, AntonDecl, Kaur release.}
+\label{tb:old_model}
+\end{table}
