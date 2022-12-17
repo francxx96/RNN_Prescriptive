@@ -8,12 +8,11 @@ from training.train_cf import TrainCF
 from training.train_cfr import TrainCFR
 from training.train_cfrt import TrainCFRT
 from utils.convert_xes_to_csv import convert_xes_to_csv
-from pathlib import Path
 
 
 class ExperimentRunner:
     _log_names = [
-        'Data-flow log.xes'
+        'Data-flow log.csv'
     ]
 
     def __init__(self, use_old_model, use_time, port, python_port, train, evaluate):
@@ -35,7 +34,7 @@ class ExperimentRunner:
     def _run_single_experiment(self, log_name):
         if log_name.endswith('.xes') or log_name.endswith('.xes.gz'):
             print(f'Converting {log_name} to csv...')
-            xes_log_path = Path(shared_variables.data_folder + log_name)
+            xes_log_path = shared_variables.data_folder.joinpath(log_name)
             log_name = convert_xes_to_csv(xes_log_path)
 
         print('log_name:', log_name)

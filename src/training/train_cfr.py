@@ -112,9 +112,9 @@ class TrainCFR:
         casestarttime = None
         lasteventtime = None
 
-        path = shared_variables.data_folder + log_name + '.csv'
+        path = shared_variables.data_folder.joinpath(log_name)
         print(path)
-        csvfile = open(shared_variables.data_folder + log_name + '.csv', 'r')
+        csvfile = open(str(path), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(spamreader, None)  # skip the headers
 
@@ -194,7 +194,7 @@ class TrainCFR:
         char_indices_group = dict((c, i) for i, c in enumerate(chars_group))
         target_char_indices_group = dict((c, i) for i, c in enumerate(target_chars_group))
 
-        csvfile = open(shared_variables.data_folder + '%s.csv' % log_name, 'r')
+        csvfile = open(str(shared_variables.data_folder.joinpath(log_name)), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(spamreader, None)  # skip the headers
         lastcase = ''

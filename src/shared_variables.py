@@ -6,13 +6,14 @@ code more clear
 """
 import glob
 import os
+from pathlib import Path
 
 ascii_offset = 161
 beam_size = 3
 log_file = ''
 outputs_folder = '../output_files/'
-data_folder = '../data/'
-# data_folder = '../'
+data_folder = Path(os.getcwd()).joinpath('data')
+
 declare_models_folder = '../declare_models_xml/'
 epochs = 300
 folds = 3
