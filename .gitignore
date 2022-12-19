@@ -1,6 +1,7 @@
 # Project useless files
 .DS_Store
 output_files/
+declare_models-xml/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
