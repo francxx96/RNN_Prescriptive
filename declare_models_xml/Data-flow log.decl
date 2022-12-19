@@ -1,0 +1,28 @@
+activity A
+bind org:group
+activity B
+bind org:group
+activity C
+bind org:group
+activity D1
+bind org:group
+activity D2
+bind org:group
+activity D3
+bind org:group
+activity E
+bind org:group
+activity F
+bind org:group
+activity G1
+bind org:group
+activity G2
+bind org:group
+activity G3
+bind org:group
+activity H
+bind org:group
+activity I
+bind org:group
+org:group: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, W, X, Y, Z
+Init[A] | |

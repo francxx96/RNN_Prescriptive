@@ -34,8 +34,10 @@ class ExperimentRunner:
     def _run_single_experiment(self, log_name):
         if log_name.endswith('.xes') or log_name.endswith('.xes.gz'):
             print(f'Converting {log_name} to csv...')
-            xes_log_path = shared_variables.data_folder.joinpath(log_name)
+            xes_log_path = shared_variables.data_folder / log_name
             log_name = convert_xes_to_csv(xes_log_path)
+        elif (log_name.endswith('.csv')):
+            log_name = (shared_variables.data_folder / log_name).stem
 
         print('log_name:', log_name)
         print('use_time:', self._use_time)
@@ -72,7 +74,7 @@ if __name__ == '__main__':
                      use_time=False,
                      port=25333,
                      python_port=25334,
-                     train=True,
+                     train=False,
                      evaluate=True).run_experiments(None)
     '''
     parser = argparse.ArgumentParser()

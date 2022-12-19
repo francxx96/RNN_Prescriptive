@@ -21,7 +21,7 @@ from evaluation.server_replayer import verify_with_data, verify_formula_as_compl
 
 
 def prepare_testing_data(eventlog):
-    csvfile = open(shared_variables.data_folder + '%s.csv' % eventlog, 'r')
+    csvfile = open(shared_variables.data_folder / (eventlog + '.csv'), 'r')
     spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
     next(spamreader, None)  # skip the headers
 

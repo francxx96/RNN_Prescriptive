@@ -25,7 +25,7 @@ def convert_xes_to_csv(xes_log_path: Path) -> str:
 
     dataframe.to_csv(str(csv_log_path), index=False)
 
-    return csv_log_path.name
+    return csv_log_path.stem
 
 
 def encode_activities_and_resources(log: EventLog) -> tuple[dict, dict]:

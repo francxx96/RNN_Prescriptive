@@ -9,13 +9,13 @@ Author: Niek Tax
 from __future__ import division
 
 import csv
-import os
+from pathlib import Path
 import time
 from datetime import timedelta
 from jellyfish import damerau_levenshtein_distance
 import distance
 import numpy as np
-from tensorflow.python.keras.models import load_model
+from tensorflow.keras.models import load_model
 from sklearn import metrics
 
 import shared_variables
@@ -68,12 +68,12 @@ def run_experiments(log_name, models_folder, fold):
     one_ahead_gt = []
     one_ahead_pred = []
 
-    folder_path = shared_variables.outputs_folder + models_folder + '/' + str(fold) + '/results/baseline/'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    output_filename = folder_path + '%s_%s.csv' % (log_name, 'CF')
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline'
+    if not Path.exists(folder_path):
+        Path.mkdir(folder_path, parents=True)
+    output_filename = folder_path / (log_name + '_CF.csv')
 
-    with open(output_filename, 'w') as csvfile:
+    with open(str(output_filename), 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         spamwriter.writerow(["Prefix length", "Ground truth", "Predicted", "Damerau-Levenshtein", "Jaccard",
                              "Ground truth times", "Predicted times", "RMSE", "MAE", "Median AE"])

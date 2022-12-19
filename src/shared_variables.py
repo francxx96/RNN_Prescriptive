@@ -11,10 +11,10 @@ from pathlib import Path
 ascii_offset = 161
 beam_size = 3
 log_file = ''
-outputs_folder = '../output_files/'
-data_folder = Path(os.getcwd()).joinpath('data')
+outputs_folder = Path.cwd() / 'output_files'
+data_folder = Path.cwd() / 'data'
 
-declare_models_folder = '../declare_models_xml/'
+declare_models_folder = Path.cwd() / 'declare_models_xml'
 epochs = 300
 folds = 3
 validation_split = 0.2
@@ -29,145 +29,20 @@ def get_int_from_unicode(unch):
 
 
 def extract_last_model_checkpoint(log_name, models_folder, fold, model_type):
-    model_filepath = outputs_folder + models_folder + '/' + str(fold) + '/models/' + model_type + '/' + log_name + '/'
-    list_of_files = glob.glob(model_filepath + '*.h5')
+    model_filepath = outputs_folder / models_folder / str(fold) / 'models' / model_type / log_name
+    list_of_files = glob.glob(str(model_filepath / '*.h5'))
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
 
 
 def extract_declare_model_filename(log_name):
-    return declare_models_folder + log_name + '.xml'
+    return str(declare_models_folder / (log_name + ".xml"))
 
 
 log_settings = {
-    'helpdesk': {
-        'formula': " []( ( \"6\" -> <>( \"3\" ) ) )  /\ <>\"6\" ",
+    'Data-flow log': {
+        'formula': "",
         'prefix_size_pred_from': 3,
         'prefix_size_pred_to': 7
-    },
-    '10x5_1S': {
-        'formula': " []( ( \"6\" -> <>( \"3\" ) ) )  /\ <>\"6\" ",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x5_1W': {
-        'formula': "<>(\"6\")",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x5_2S': {
-        'formula': " []( ( \"6\" -> <>( \"1\" ) ) )  /\ <>\"6\" /\  []( ( \"8\" -> <>( \"1\" ) ) )  /\ <>\"8\" /\ ",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x5_2W': {
-        'formula': "<>(\"8\") /\ <>(\"7\")",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '5x5_1W': {
-        'formula': "<>(\"3\")",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 6
-    },
-    '5x5_1S': {
-        'formula': " []( ( \"3\" -> <>( \"4\" ) ) )  /\ <>\"3\" ",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 6
-    },
-    '5x5_2W': {
-        'formula': "<>(\"4\") /\ <>(\"3\")",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 4
-    },
-    '5x5_2S': {
-        'formula': " []( ( \"4\" -> <>( \"3\" ) ) )  /\ <>\"4\" /\  []( ( \"3\" -> <>( \"0\" ) ) )  /\ <>\"3\" /\ ",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 4
-    },
-    '10x20_1W': {
-        'formula': "<>(\"9\")",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 6
-    },
-    '10x20_1S': {
-        'formula': " []( ( \"8\" -> <>( \"9\" ) ) )  /\ <>\"8\" ",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x20_2W': {
-        'formula': "<>(\"9\") /\ <>(\"6\") /\ <>(\"8\")",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x20_2S': {
-        'formula': "[]( ( \"9\" -> <>( \"7\" ) ) )  /\ <>\"9\" /\  []( ( \"8\" -> <>( \"6\" ) ) )  /\ <>\"8\" /\  []( ( \"7\" -> <>( \"5\" ) ) )  /\ <>\"7\" ",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x2_1W': {
-        'formula': "<>(\"2\")",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x2_1S': {
-        'formula': " []( ( \"6\" -> <>( \"2\" ) ) )  /\ <>\"6\"",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '10x2_2W': {
-        'formula': "<>(\"8\") /\ <>(\"7\")",
-        'prefix_size_pred_from': 5,
-        'prefix_size_pred_to': 7
-    },
-    '10x2_2S': {
-        'formula': " []( ( \"9\" -> <>( \"3\" ) ) )  /\ <>\"9\" /\  []( ( \"7\" -> <>( \"3\" ) ) )  /\ <>\"7\"",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '50x5_1W': {
-        'formula': "<>(\"7\")",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '50x5_1S': {
-        'formula': " []( ( \"7\" -> <>( \"8\" ) ) )  /\ <>\"7\"",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '50x5_2W': {
-        'formula': "<>(\"9\") /\ <>(\"7\")",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 7
-    },
-    '50x5_2S': {
-        'formula': " []( ( \"9\" -> <>( \"7\" ) ) )  /\ <>\"9\" /\  []( ( \"8\" -> <>( \"7\" ) ) )  /\ <>\"8\"",
-        'prefix_size_pred_from': 6,
-        'prefix_size_pred_to': 7
-    },
-    'BPI2017_1S': {
-        'formula': " []( ( \"17\" -> <>( \"18\" ) ) )  /\ <>\"17\"",
-        'prefix_size_pred_from': 6,
-        'prefix_size_pred_to': 9
-    },
-    'BPI2017_1W': {
-        'formula': "<>(\"17\")",
-        'prefix_size_pred_from': 6,
-        'prefix_size_pred_to': 9
-    },
-    'BPI2012_1S': {
-        'formula': " []( ( \"3\" -> <>( \"5\" ) ) )  /\ <>\"3\"",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 5
-    },
-    'BPI2012_1W': {
-        'formula': "<>(\"6\")",
-        'prefix_size_pred_from': 4,
-        'prefix_size_pred_to': 8
-    },
-    'BPI2012_1W_bis': {
-        'formula': "<>(\"3\")",
-        'prefix_size_pred_from': 2,
-        'prefix_size_pred_to': 5
     },
 }

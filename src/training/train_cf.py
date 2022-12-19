@@ -94,7 +94,7 @@ class TrainCF:
         current_case_start_time = None
         last_event_time = None
 
-        csvfile = open(str(shared_variables.data_folder.joinpath(log_name)), 'r')
+        csvfile = open(str(shared_variables.data_folder / log_name), 'r')
         csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(csv_reader, None)
 
@@ -141,7 +141,7 @@ class TrainCF:
         case_start_time = None
         last_event_time = None
 
-        path = shared_variables.data_folder.joinpath(log_name)
+        path = shared_variables.data_folder / (log_name + '.csv')
         print(path)
         csvfile = open(str(path), 'r')
         csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -215,7 +215,7 @@ class TrainCF:
         char_indices = dict((c, i) for i, c in enumerate(chars))
         target_char_indices = dict((c, i) for i, c in enumerate(target_chars))
 
-        csvfile = open(str(shared_variables.data_folder.joinpath(log_name)), 'r')
+        csvfile = open(str(shared_variables.data_folder / (log_name + '.csv')), 'r')
         csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(csv_reader, None)  # skip the headers
         last_case = ''

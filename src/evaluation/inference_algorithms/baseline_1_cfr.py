@@ -9,6 +9,7 @@ The script is expanded to also use the Resource attribute
 from __future__ import division
 
 import csv
+from pathlib import Path
 import time
 from collections import Counter
 from datetime import datetime, timedelta
@@ -16,7 +17,7 @@ import os
 from jellyfish import damerau_levenshtein_distance
 import distance
 import numpy as np
-from tensorflow.python.keras.models import load_model
+from tensorflow.keras.models import load_model
 from sklearn import metrics
 import shared_variables
 from evaluation.prepare_data_resource import select_declare_verified_traces, prepare_testing_data
@@ -94,10 +95,10 @@ def run_experiments(log_name, models_folder, fold):
     one_ahead_gt = []
     one_ahead_pred = []
 
-    folder_path = shared_variables.outputs_folder + models_folder + '/' + str(fold) + '/results/baseline/'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    output_filename = folder_path + '%s_%s.csv' % (log_name, 'CFR')
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline'
+    if not Path.exists(folder_path):
+        Path.mkdir(folder_path, parents=True)
+    output_filename = folder_path / (log_name +'_CFR.csv')
 
     with open(output_filename, 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)

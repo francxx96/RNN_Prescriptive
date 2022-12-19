@@ -57,7 +57,7 @@ def parse_decl(path):
             attribute = split[1].split("]")[0]
             tmp = dict()
             tmp['key'] = key
-            tmp['condition'] = [modify_condition(line.split("|")[1]), n]
+            tmp['condition'] = [modify_condition(line.split("|")[1])]
             tmp['attribute'] = attribute
             result.checkers.append(tmp)
         elif (line.startswith(RESPONDED_EXISTENCE)

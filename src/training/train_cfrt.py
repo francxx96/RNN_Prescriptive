@@ -100,7 +100,7 @@ class TrainCFRT:
 
         r = 3
 
-        path = shared_variables.data_folder.joinpath(log_name)
+        path = shared_variables.data_folder.joinpath(log_name + '.csv')
         print(path)
         csvfile = open(str(path), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -230,7 +230,7 @@ class TrainCFRT:
         char_indices_time = dict((c, i) for i, c in enumerate(chars_time))
         target_char_indices_time = dict((c, i) for i, c in enumerate(target_chars_time))
 
-        csvfile = open(str(shared_variables.data_folder.joinpath(log_name)), 'r')
+        csvfile = open(str(shared_variables.data_folder.joinpath(log_name + '.csv')), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(spamreader, None)  # skip the headers
         lastcase = ''
