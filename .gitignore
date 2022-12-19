@@ -1,5 +1,6 @@
-# MacOS storage files
+# Project useless files
 .DS_Store
+output_files/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
