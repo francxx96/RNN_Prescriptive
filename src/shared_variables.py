@@ -73,7 +73,7 @@ def encode_log(log_path: Path) -> str:
     #    csv_df = pd.read_csv(filepath_or_buffer=str(log_path), sep=',')
 
     else:
-        raise RuntimeError(f"Extension of {log_filename} must '.xes', '.xes.gz'!")
+        raise RuntimeError(f"Extension of {log_filename} must be '.xes' or '.xes.gz'!")
 
     global act_encoding
     global res_encoding
@@ -94,6 +94,6 @@ log_settings = {
     'Data-flow log': {
         'formula': "",
         'prefix_size_pred_from': 7,
-        'prefix_size_pred_to': 7
+        'prefix_size_pred_to': 8
     },
 }
