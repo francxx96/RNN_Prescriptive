@@ -37,7 +37,8 @@ def run_experiments(log_name, models_folder, fold):
     beam_size = shared_variables.beam_size
     beam_size = 10
     model_filename = shared_variables.extract_last_model_checkpoint(log_name, models_folder, fold, 'CFR')
-    declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
+    # declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
+    pn_model_filename = shared_variables.extract_petrinet_filename(log_name)
 
     log_settings_dictionary = shared_variables.log_settings[log_name]
     formula = log_settings_dictionary['formula']
@@ -126,7 +127,7 @@ def run_experiments(log_name, models_folder, fold):
         lines_t2_s, \
         lines_t3_s, \
         lines_t4_s = select_declare_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2,
-                                                        lines_t3, lines_t4, declare_model_filename, None)
+                                                        lines_t3, lines_t4, pn_model_filename, None)
 
         print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
         print('elapsed_time:', time.time() - curr_time)
@@ -184,7 +185,7 @@ def run_experiments(log_name, models_folder, fold):
                         if not found_satisfying_constraint:
                             ##if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name,
                                                            ##prefix_size, current_prediction_premis.cropped_line_group):
-                            if verify_formula_ivan(current_prediction_premis.trace_id, current_prediction_premis.cropped_line, declare_model_filename, current_prediction_premis.cropped_line_group, "declare"):
+                            if verify_formula_ivan(current_prediction_premis.trace_id, current_prediction_premis.cropped_line, pn_model_filename, current_prediction_premis.cropped_line_group, "declare"):
                             #if verify_with_data(declare_model_filename, current_prediction_premis.trace_id,
                             #                    current_prediction_premis.cropped_line,
                             #                    current_prediction_premis.cropped_line_group,
@@ -230,7 +231,7 @@ def run_experiments(log_name, models_folder, fold):
                             if temp_prediction == '!':
                                 ## if verify_formula_as_compliant(counter_id, temp_cropped_line, log_name, prefix_size,
                                 ##                               temp_cropped_line_group):
-                                if verify_formula_ivan(current_prediction_premis.trace_id, current_prediction_premis.cropped_line, declare_model_filename, current_prediction_premis.cropped_line_group, "declare"):
+                                if verify_formula_ivan(current_prediction_premis.trace_id, current_prediction_premis.cropped_line, pn_model_filename, current_prediction_premis.cropped_line_group, "declare"):
                                 #if verify_with_data(declare_model_filename, current_prediction_premis.trace_id,
                                 #                    current_prediction_premis.cropped_line,
                                 #                    current_prediction_premis.cropped_line_group,
@@ -287,7 +288,7 @@ def run_experiments(log_name, models_folder, fold):
                     predicted_group = (current_prediction_premis.cropped_line_group[prefix_size:])
                     total_predicted_time = current_prediction_premis.total_predicted_time
 
-                compliantness = verify_with_data(declare_model_filename, current_prediction_premis.trace_id,
+                compliantness = verify_with_data(pn_model_filename, current_prediction_premis.trace_id,
                                                  current_prediction_premis.cropped_line,
                                                  current_prediction_premis.cropped_line_group,
                                                  current_prediction_premis.cropped_times)

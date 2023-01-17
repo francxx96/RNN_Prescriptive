@@ -1,9 +1,11 @@
 # import subprocess
 # from py4j.java_gateway import JavaGateway, GatewayParameters
 
+import shared_variables
 from shared_variables import get_int_from_unicode
 from mp_checkers.test_mp_checkers_traces import run_all_mp_checkers_traces, run_all_mp_checkers_traces_model
-from pm4py.objects.log import log as lg
+from pm4py.objects.log import obj as lg
+import pm4py
 from datetime import datetime, timedelta
 
 
@@ -74,7 +76,7 @@ def verify_formula_as_compliant(self, trace, formula, prefix=0):
     ver = self._traces_checker.isTraceViolated(formula, trace_new) is False
     return ver"""
 
-
+'''
 def verify_with_data(model_file, trace_id, activities, groups, times):
     model_file = model_file.replace(".xml", ".decl")
     trace_xes = lg.Trace()
@@ -86,9 +88,25 @@ def verify_with_data(model_file, trace_id, activities, groups, times):
         event["org:resource"] = get_int_from_unicode(groups[i])
         trace_xes.append(event)
     return run_all_mp_checkers_traces_model(trace_xes, model_file)
+'''
 
-def verify_with_PetriNet(pn_file: str, trace_id: str, activities, groups, times):
-    return False
+
+def verify_with_data(pn_file: str, trace_id: str, activities, groups, times):
+    log_xes = lg.EventLog()
+    trace_xes = lg.Trace()
+    trace_xes.attributes["concept:name"] = trace_id
+    for i in range(len(activities)):
+        event = lg.Event()
+        event["concept:name"] = shared_variables.act_encoding[get_int_from_unicode(activities[i])]
+        event["time:timestamp"] = times[i]
+        event["org:resource"] = shared_variables.res_encoding[get_int_from_unicode(groups[i])]
+        trace_xes.append(event)
+
+    log_xes.append(trace_xes)
+
+    net, initial_marking, final_marking = pm4py.read_pnml(pn_file, auto_guess_final_marking=True)
+    alignment = pm4py.conformance_diagnostics_alignments(log_xes, net, initial_marking, final_marking)[0]
+    return alignment['fitness'] >= 1
 
 
 def verify_with_elapsed_time(model_file, trace_id, activities, groups, times, elapsed_times, prefix=0):
@@ -122,7 +140,7 @@ def verify_formula_as_compliant(idx, trace, log_name, prefix, groups):
 
 
 def verify_formula_ivan(idx, trace, log_name, groups, bk_type):
-    if bk_type is "declare":
+    if bk_type == "declare":
         log_name = log_name.replace(".xml", ".decl")
     trace_xes = lg.Trace()
     trace_xes.attributes["concept:name"] = idx
@@ -135,7 +153,7 @@ def verify_formula_ivan(idx, trace, log_name, groups, bk_type):
             event["org:resource"] = get_int_from_unicode(groups[i])
         trace_xes.append(event)
         c += 1
-    if bk_type is not "declare":
+    if bk_type != "declare":
         return run_all_mp_checkers_traces(trace_xes, log_name)
     else:
         return run_all_mp_checkers_traces_model(trace_xes, log_name)

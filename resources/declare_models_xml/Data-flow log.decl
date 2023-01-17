@@ -25,4 +25,4 @@ bind org:group
 activity I
 bind org:group
 org:group: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, W, X, Y, Z
-Init[A] | |
+Init[0] | |

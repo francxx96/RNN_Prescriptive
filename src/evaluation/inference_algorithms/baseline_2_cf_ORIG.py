@@ -28,7 +28,8 @@ from evaluation.prepare_data_resource import prepare_testing_data, select_declar
 def run_experiments(log_name, models_folder, fold):
     beam_size = shared_variables.beam_size
     model_filename = shared_variables.extract_last_model_checkpoint(log_name, models_folder, fold, 'CF')
-    declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
+    # declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
+    pn_model_filename = shared_variables.extract_petrinet_filename(log_name)
 
     log_settings_dictionary = shared_variables.log_settings[log_name]
     formula = log_settings_dictionary['formula']
@@ -111,7 +112,7 @@ def run_experiments(log_name, models_folder, fold):
                                                         lines_t2,
                                                         lines_t3,
                                                         lines_t4,
-                                                        declare_model_filename,
+                                                        pn_model_filename,
                                                         prefix_size)
             print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
             print('elapsed_time:', time.time() - curr_time)
