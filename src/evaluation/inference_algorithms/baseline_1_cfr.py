@@ -13,14 +13,13 @@ from pathlib import Path
 import time
 from collections import Counter
 from datetime import datetime, timedelta
-import os
 from jellyfish import damerau_levenshtein_distance
 import distance
 import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn import metrics
 import shared_variables
-from evaluation.prepare_data_resource import select_declare_verified_traces, prepare_testing_data
+from evaluation.prepare_data_resource import select_petrinet_verified_traces, prepare_testing_data
 
 
 def run_experiments(log_name, models_folder, fold):
@@ -99,7 +98,7 @@ def run_experiments(log_name, models_folder, fold):
     folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline'
     if not Path.exists(folder_path):
         Path.mkdir(folder_path, parents=True)
-    output_filename = folder_path / (log_name +'_CFR.csv')
+    output_filename = folder_path / (log_name + '_CFR.csv')
 
     with open(output_filename, 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -108,22 +107,16 @@ def run_experiments(log_name, models_folder, fold):
                              "Predicted Group", "Damerau-Levenshtein Resource"])
 
         curr_time = time.time()
-        lines_s, \
-        lines_id_s, \
-        lines_group_s, \
-        lines_t_s, \
-        lines_t2_s, \
-        lines_t3_s, \
-        lines_t4_s = select_declare_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2,
-                                                    lines_t3, lines_t4, pn_model_filename, None)
+        lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s \
+            = select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2, lines_t3,
+                                              lines_t4, pn_model_filename, None)
 
         print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
         print('elapsed_time:', time.time() - curr_time)
         for prefix_size in range(prefix_size_pred_from, prefix_size_pred_to):
             print("prefix size: " + str(prefix_size))
-            for line, line_id, line_group, times, times2, times3, times4 in zip(lines_s, lines_id_s, lines_group_s,
-                                                                                 lines_t_s, lines_t2_s, lines_t3_s,
-                                                                                 lines_t4_s):
+            for line, line_id, line_group, times, times2, times3, times4 \
+                    in zip(lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s):
                 times.append(0)
                 cropped_line = ''.join(line[:prefix_size])
                 cropped_line_group = ''.join(line_group[:prefix_size])

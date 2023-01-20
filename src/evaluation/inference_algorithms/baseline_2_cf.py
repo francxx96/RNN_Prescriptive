@@ -5,11 +5,11 @@ here the beam search (with breath-first-search) is implemented, to find complian
 
 Author: Anton Yeshchenko
 """
+
 from __future__ import division
 
 import csv
-import os.path
-import pdb
+from pathlib import Path
 import time
 from queue import PriorityQueue
 from datetime import timedelta
@@ -18,18 +18,18 @@ import distance
 import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn import metrics
-from jellyfish._jellyfish import damerau_levenshtein_distance
+from jellyfish import damerau_levenshtein_distance
 import shared_variables
-from evaluation.server_replayer import verify_formula_as_compliant, verify_formula_ivan
+from evaluation.server_replayer import verify_with_data
 from evaluation.prepare_data import amplify, get_symbol_ampl
 from evaluation.prepare_data import encode
-from evaluation.prepare_data_resource import prepare_testing_data, select_declare_verified_traces
+from evaluation.prepare_data_resource import prepare_testing_data, select_petrinet_verified_traces
 
 
 def run_experiments(log_name, models_folder, fold):
     beam_size = shared_variables.beam_size
     model_filename = shared_variables.extract_last_model_checkpoint(log_name, models_folder, fold, 'CF')
-    #declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
+    # declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
     pn_model_filename = shared_variables.extract_petrinet_filename(log_name)
 
     log_settings_dictionary = shared_variables.log_settings[log_name]
@@ -40,26 +40,9 @@ def run_experiments(log_name, models_folder, fold):
     start_time = time.time()
 
     # prepare the data
-    lines, \
-    lines_id, \
-    lines_group, \
-    lines_t, \
-    lines_t2, \
-    lines_t3, \
-    lines_t4, \
-    maxlen, \
-    chars, \
-    chars_group, \
-    char_indices, \
-    char_indices_group, \
-    divisor, \
-    divisor2, \
-    divisor3, \
-    predict_size, \
-    target_indices_char, \
-    target_indices_char_group, \
-    target_char_indices, \
-    target_char_indices_group = prepare_testing_data(log_name)
+    lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4, maxlen, chars, chars_group, char_indices, \
+        char_indices_group, divisor, divisor2, divisor3, predict_size, target_indices_char, target_indices_char_group, \
+        target_char_indices, target_char_indices_group = prepare_testing_data(log_name)
 
     # this is the beam stack size, means how many "best" alternatives will be stored
     one_ahead_gt = []
@@ -84,34 +67,21 @@ def run_experiments(log_name, models_folder, fold):
         def __lt__(self, other):
             return -self.probability_of < -other.probability_of
 
-    folder_path = shared_variables.outputs_folder + models_folder + '/' + str(fold) + '/results/LTL/'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    output_filename = folder_path + '%s_%s.csv' % (log_name, 'CF')
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'LTL'
+    if not Path.exists(folder_path):
+        Path.mkdir(folder_path, parents=True)
+    output_filename = folder_path / (log_name + '_CF.csv')
 
     with open(output_filename, 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        spamwriter.writerow(["Prefix length",
-                             "Ground truth",
-                             "Predicted",
-                             "Damerau-Levenshtein",
-                             "Jaccard",
-                             "Ground truth times",
-                             "Predicted times",
-                             "RMSE",
-                             "MAE",
-                             "Median AE", "compliantness"])
+        spamwriter.writerow(["Prefix length", "Ground truth", "Predicted", "Damerau-Levenshtein", "Jaccard",
+                             "Ground truth times", "Predicted times", "RMSE", "MAE", "Median AE", "compliantness"])
 
         curr_time = time.time()
 
-        lines_s, \
-        lines_id_s, \
-        lines_group_s, \
-        lines_t_s, \
-        lines_t2_s, \
-        lines_t3_s, \
-        lines_t4_s = select_declare_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2,
-                                                    lines_t3, lines_t4, pn_model_filename, None)
+        lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s \
+            = select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2, lines_t3,
+                                              lines_t4, pn_model_filename, None)
 
         print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
         print('elapsed_time:', time.time() - curr_time)
@@ -129,9 +99,10 @@ def run_experiments(log_name, models_folder, fold):
 
                 # initialize root of the tree for beam search
                 total_predicted_time_initialization = 0
-                search_node_root = NodePrediction(encode(cropped_line, cropped_times, cropped_times3, maxlen, chars,
-                                                         char_indices, divisor, divisor2), cropped_line,
-                                                  total_predicted_time_initialization)
+                search_node_root = NodePrediction(
+                    encode(cropped_line, cropped_times, cropped_times3, maxlen, chars,char_indices, divisor, divisor2),
+                    cropped_line,
+                    total_predicted_time_initialization)
 
                 ground_truth = ''.join(line[prefix_size:prefix_size + predict_size])
                 ground_truth_t = times2[prefix_size - 1]
@@ -139,7 +110,7 @@ def run_experiments(log_name, models_folder, fold):
                 ground_truth_t = case_end_time - ground_truth_t
 
                 queue_next_steps = PriorityQueue()
-                ##queue_next_steps.put((-search_node_root.probability_of, search_node_root))
+                # queue_next_steps.put((-search_node_root.probability_of, search_node_root))
                 queue_next_steps.put(search_node_root)
 
                 queue_next_steps_future = PriorityQueue()
@@ -149,25 +120,25 @@ def run_experiments(log_name, models_folder, fold):
                 current_beam_size = beam_size
                 current_prediction_premis = None
                 counter_id = 0
-                #print(f"Prefix {line}")
+                # print(f"Prefix {line}")
                 for i in range(predict_size):
-                    #print(f"Beam search at step {i}")
+                    # print(f"Beam search at step {i}")
                     for k in range(current_beam_size):
                         if queue_next_steps.empty():
                             break
 
-                        ##_, current_prediction_premis = queue_next_steps.get()
-                        #print(f"k is {k}, queue_next_steps contains the nodes")
-                        #for el in queue_next_steps.queue:
+                        # _, current_prediction_premis = queue_next_steps.get()
+                        # print(f"k is {k}, queue_next_steps contains the nodes")
+                        # for el in queue_next_steps.queue:
                         #    print(f"\t{el}")
                         current_prediction_premis = queue_next_steps.get()
 
-                        #print(f"k is {k}, current node is {current_prediction_premis}")
-                        #"""
+                        # print(f"k is {k}, current node is {current_prediction_premis}")
+
                         if not found_satisfying_constraint:
-                            if verify_formula_ivan(counter_id, current_prediction_premis.cropped_line, log_name, None, "LTL"):
-                            #if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name):
-                                #print(f"k is {k}, current node {current_prediction_premis} is compliant")
+                            if verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line, None, None):
+                            # if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name):
+                                # print(f"k is {k}, current node {current_prediction_premis} is compliant")
                                 # the formula verified and we can just finish the predictions
                                 # beam size is 1 because predict only sequence of events
                                 current_beam_size = 1
@@ -175,7 +146,7 @@ def run_experiments(log_name, models_folder, fold):
                                 # overwrite new queue
                                 queue_next_steps_future = PriorityQueue()
                                 found_satisfying_constraint = True
-                        #"""
+
                         enc = current_prediction_premis.data
                         temp_cropped_line = current_prediction_premis.cropped_line
                         y = model.predict(enc, verbose=0)  # make predictions
@@ -194,16 +165,16 @@ def run_experiments(log_name, models_folder, fold):
                         # in not reached, function :choose_next_top_descendant: will backtrack
                         y_t = y_t * divisor3
                         cropped_times3.append(cropped_times3[-1] + timedelta(seconds=(int(y_t) if y_t == 0 else y_t)))
-                        #print(f"Adding the next {current_beam_size} nodes")
+                        # print(f"Adding the next {current_beam_size} nodes")
                         for j in range(current_beam_size):
                             temp_prediction = get_symbol_ampl(y_char, target_indices_char, target_char_indices,
                                                               start_of_the_cycle_symbol,
                                                               stop_symbol_probability_amplifier_current, j)
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
-                                if verify_formula_ivan(counter_id, temp_cropped_line, log_name, None, "LTL"):
-                                #if verify_formula_as_compliant(counter, temp_cropped_line, log_name):
-                                    #print(f"{temp_cropped_line} finished and compliant")
+                                if verify_with_data(pn_model_filename, counter_id, temp_cropped_line, None, None):
+                                # if verify_formula_as_compliant(counter, temp_cropped_line, log_name):
+                                    # print(f"{temp_cropped_line} finished and compliant")
                                     one_ahead_pred.append(current_prediction_premis.total_predicted_time)
                                     one_ahead_gt.append(ground_truth_t)
                                     stop_symbol_probability_amplifier_current = 1
@@ -227,8 +198,8 @@ def run_experiments(log_name, models_folder, fold):
 
                             # print 'INFORMATION: ' + str(counter) + ' ' + str(i) + ' ' + str(k) + ' ' + str(j) + ' ' + \
                             #       temp_cropped_line[prefix_size:] + "     " + str(temp.probability_of)
-                    #print(f"Elements in queue_next_steps_future:")
-                    #for el in queue_next_steps_future.queue:
+                    # print(f"Elements in queue_next_steps_future:")
+                    # for el in queue_next_steps_future.queue:
                     #    print(f"\t{el}")
                     queue_next_steps = queue_next_steps_future
                     queue_next_steps_future = PriorityQueue()
@@ -249,17 +220,17 @@ def run_experiments(log_name, models_folder, fold):
                     predicted = (current_prediction_premis.cropped_line[prefix_size:])
                     total_predicted_time = current_prediction_premis.total_predicted_time
 
-                compliantness = verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line,
-                                                            log_name)
+                compliantness = verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
+                                                            None, None)
                 compliantness = 1 if compliantness else 0
-                #pdb.set_trace()
+
                 if len(ground_truth) > 0:
                     output.append(prefix_size)
                     output.append(ground_truth)
                     output.append(predicted)
                     # output.append(1 - distance.nlevenshtein(predicted, ground_truth))
-                    dls = 1 - (damerau_levenshtein_distance(predicted, ground_truth) / max(
-                        len(predicted), len(ground_truth)))
+                    dls = 1 - (damerau_levenshtein_distance(predicted, ground_truth) /
+                               max(len(predicted), len(ground_truth)))
                     if dls < 0:
                         dls = 0
                     output.append(dls)

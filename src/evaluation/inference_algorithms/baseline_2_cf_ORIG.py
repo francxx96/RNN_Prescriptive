@@ -5,10 +5,11 @@ here the beam search (with breath-first-search) is implemented, to find complian
 
 Author: Anton Yeshchenko
 """
+
 from __future__ import division
 
 import csv
-import os.path
+from pathlib import Path
 import time
 from queue import PriorityQueue
 from datetime import timedelta
@@ -19,10 +20,10 @@ from tensorflow.keras.models import load_model
 from sklearn import metrics
 
 import shared_variables
-from evaluation.server_replayer import verify_formula_as_compliant
+from evaluation.server_replayer import verify_with_data
 from evaluation.prepare_data import amplify, get_symbol_ampl
 from evaluation.prepare_data import encode
-from evaluation.prepare_data_resource import prepare_testing_data, select_declare_verified_traces
+from evaluation.prepare_data_resource import prepare_testing_data, select_petrinet_verified_traces
 
 
 def run_experiments(log_name, models_folder, fold):
@@ -39,26 +40,9 @@ def run_experiments(log_name, models_folder, fold):
     start_time = time.time()
 
     # prepare the data
-    lines, \
-    lines_id, \
-    lines_group, \
-    lines_t, \
-    lines_t2, \
-    lines_t3, \
-    lines_t4, \
-    maxlen, \
-    chars, \
-    chars_group, \
-    char_indices, \
-    char_indices_group, \
-    divisor, \
-    divisor2, \
-    divisor3, \
-    predict_size, \
-    target_indices_char, \
-    target_indices_char_group, \
-    target_char_indices, \
-    target_char_indices_group = prepare_testing_data(log_name)
+    lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4, maxlen, chars, chars_group, char_indices, \
+        char_indices_group, divisor, divisor2, divisor3, predict_size, target_indices_char, target_indices_char_group, \
+        target_char_indices, target_char_indices_group = prepare_testing_data(log_name)
 
     # this is the beam stack size, means how many "best" alternatives will be stored
     one_ahead_gt = []
@@ -77,43 +61,24 @@ def run_experiments(log_name, models_folder, fold):
             self.total_predicted_time = tot_predicted_time
             self.probability_of = probability_of
 
-    folder_path = shared_variables.outputs_folder + models_folder + '/' + str(fold) + '/results/LTL/'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    output_filename = folder_path + '%s_%s.csv' % (log_name, 'CF')
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'LTL'
+    if not Path.exists(folder_path):
+        Path.mkdir(folder_path, parents=True)
+    output_filename = folder_path / (log_name + '_CF.csv')
 
     with open(output_filename, 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        spamwriter.writerow(["Prefix length",
-                             "Ground truth",
-                             "Predicted",
-                             "Damerau-Levenshtein",
-                             "Jaccard",
-                             "Ground truth times",
-                             "Predicted times",
-                             "RMSE",
-                             "MAE",
-                             "Median AE"])
+        spamwriter.writerow(["Prefix length", "Ground truth", "Predicted", "Damerau-Levenshtein", "Jaccard",
+                             "Ground truth times", "Predicted times", "RMSE", "MAE", "Median AE"])
+
         for prefix_size in range(prefix_size_pred_from, prefix_size_pred_to):
             print("prefix size: " + str(prefix_size))
             curr_time = time.time()
 
-            lines_s, \
-            lines_id_s, \
-            lines_group_s, \
-            lines_t_s, \
-            lines_t2_s, \
-            lines_t3_s, \
-            lines_t4_s = select_declare_verified_traces(log_name,
-                                                        lines,
-                                                        lines_id,
-                                                        lines_group,
-                                                        lines_t,
-                                                        lines_t2,
-                                                        lines_t3,
-                                                        lines_t4,
-                                                        pn_model_filename,
-                                                        prefix_size)
+            lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s \
+                = select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2, lines_t3,
+                                                  lines_t4, pn_model_filename, prefix_size)
+
             print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
             print('elapsed_time:', time.time() - curr_time)
             counter = 0
@@ -127,16 +92,10 @@ def run_experiments(log_name, models_folder, fold):
 
                 # initialize root of the tree for beam search
                 total_predicted_time_initialization = 0
-                search_node_root = NodePrediction(encode(cropped_line,
-                                                         cropped_times,
-                                                         cropped_times3,
-                                                         maxlen,
-                                                         chars,
-                                                         char_indices,
-                                                         divisor,
-                                                         divisor2),
-                                                  cropped_line,
-                                                  total_predicted_time_initialization)
+                search_node_root = NodePrediction(
+                    encode(cropped_line, cropped_times, cropped_times3, maxlen, chars, char_indices, divisor, divisor2),
+                    cropped_line,
+                    total_predicted_time_initialization)
 
                 ground_truth = ''.join(line[prefix_size:prefix_size + predict_size])
                 ground_truth_t = times2[prefix_size - 1]
@@ -161,9 +120,8 @@ def run_experiments(log_name, models_folder, fold):
                         _, current_prediction_premis = queue_next_steps.get()
 
                         if not found_satisfying_constraint:
-                            if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line,
-                                                           log_name,
-                                                           prefix_size, None):
+                            if verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
+                                                None, None):
                                 #if
                                 # the formula verified and we can just finish the predictions
                                 # beam size is 1 because predict only sequence of events
@@ -198,7 +156,7 @@ def run_experiments(log_name, models_folder, fold):
                                                               stop_symbol_probability_amplifier_current, j)
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
-                                if verify_formula_as_compliant(counter, temp_cropped_line, log_name, prefix_size, None):
+                                if verify_with_data(pn_model_filename, counter, temp_cropped_line, None, None):
                                     one_ahead_pred.append(current_prediction_premis.total_predicted_time)
                                     one_ahead_gt.append(ground_truth_t)
                                     stop_symbol_probability_amplifier_current = 1
@@ -210,13 +168,11 @@ def run_experiments(log_name, models_folder, fold):
 
                             temp_cropped_line = current_prediction_premis.cropped_line + temp_prediction
                             temp_total_predicted_time = current_prediction_premis.total_predicted_time + y_t
-                            temp_state_data = encode(temp_cropped_line, cropped_times, cropped_times3,
-                                                     maxlen, chars, char_indices, divisor, divisor2)
+                            temp_state_data = encode(temp_cropped_line, cropped_times, cropped_times3, maxlen, chars,
+                                                     char_indices, divisor, divisor2)
                             probability_this = np.sort(y_char)[len(y_char) - 1 - j]
 
-                            temp = NodePrediction(temp_state_data,
-                                                  temp_cropped_line,
-                                                  temp_total_predicted_time,
+                            temp = NodePrediction(temp_state_data, temp_cropped_line, temp_total_predicted_time,
                                                   current_prediction_premis.probability_of + np.log(probability_this))
                             queue_next_steps_future.put((-temp.probability_of, temp))
                             # print 'INFORMATION: ' + str(counter) + ' ' + str(i) + ' ' + str(k) + ' ' + str(j) + ' ' + \

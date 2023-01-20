@@ -8,8 +8,7 @@ The code is expanded to also consider the Resource attribute
 from __future__ import division
 
 import csv
-import os.path
-import pdb
+from pathlib import Path
 import sys
 import time
 from queue import PriorityQueue
@@ -22,15 +21,16 @@ from tensorflow.keras.models import load_model
 from sklearn import metrics
 
 import shared_variables
-from evaluation.server_replayer import verify_formula_as_compliant
+from evaluation.server_replayer import verify_with_data
 from evaluation.prepare_data_resource import amplify, get_symbol_ampl, encode, prepare_testing_data, \
-    select_declare_verified_traces
+    select_petrinet_verified_traces
 
+'''
 current_path = os.path.abspath(getsourcefile(lambda: 0))
 current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
-
 sys.path.insert(0, parent_dir)
+'''
 
 
 def run_experiments(log_name, models_folder, fold):
@@ -47,26 +47,9 @@ def run_experiments(log_name, models_folder, fold):
     start_time = time.time()
 
     # prepare the data
-    lines, \
-    lines_id, \
-    lines_group, \
-    lines_t, \
-    lines_t2, \
-    lines_t3, \
-    lines_t4, \
-    maxlen, \
-    chars, \
-    chars_group, \
-    char_indices, \
-    char_indices_group, \
-    divisor, \
-    divisor2, \
-    divisor3, \
-    predict_size, \
-    target_indices_char, \
-    target_indices_char_group, \
-    target_char_indices, \
-    target_char_indices_group = prepare_testing_data(log_name)
+    lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4, maxlen, chars, chars_group, char_indices, \
+        char_indices_group, divisor, divisor2, divisor3, predict_size, target_indices_char, target_indices_char_group, \
+        target_char_indices, target_char_indices_group = prepare_testing_data(log_name)
 
     # find cycles and modify the probability functionality goes here
     stop_symbol_probability_amplifier_current = 1
@@ -90,60 +73,32 @@ def run_experiments(log_name, models_folder, fold):
             self.total_predicted_time = tot_predicted_time
             self.probability_of = probability_of
 
-    folder_path = shared_variables.outputs_folder + models_folder + '/' + str(fold) + '/results/LTL/'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    output_filename = folder_path + '%s_%s.csv' % (log_name, 'CFR')
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'LTL'
+    if not Path.exists(folder_path):
+        Path.mkdir(folder_path, parents=True)
+    output_filename = folder_path / (log_name + '_CFR.csv')
 
     with open(output_filename, 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         # headers for the new file
-        spamwriter.writerow(["Prefix length",
-                             "Ground truth",
-                             "Predicted",
-                             "Damerau-Levenshtein",
-                             "Jaccard",
-                             "Ground truth times",
-                             "Predicted times",
-                             "RMSE",
-                             "MAE",
-                             "Median AE",
-                             "Ground Truth Group",
-                             "Predicted Group",
-                             "Damerau-Levenshtein Resource"])
+        spamwriter.writerow(["Prefix length", "Ground truth", "Predicted", "Damerau-Levenshtein", "Jaccard",
+                             "Ground truth times", "Predicted times", "RMSE", "MAE", "Median AE", "Ground Truth Group",
+                             "Predicted Group", "Damerau-Levenshtein Resource"])
 
         # make predictions for different prefix sizes as specified in 'shared variables'
         for prefix_size in range(prefix_size_pred_from, prefix_size_pred_to):
             print("prefix size: " + str(prefix_size))
             curr_time = time.time()
 
-            lines_s, \
-            lines_id_s, \
-            lines_group_s, \
-            lines_t_s, \
-            lines_t2_s, \
-            lines_t3_s, \
-            lines_t4_s = select_declare_verified_traces(log_name,
-                                                        lines,
-                                                        lines_id,
-                                                        lines_group,
-                                                        lines_t,
-                                                        lines_t2,
-                                                        lines_t3,
-                                                        lines_t4,
-                                                        pn_model_filename,
-                                                        prefix_size)
+            lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s \
+                = select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2, lines_t3,
+                                                  lines_t4, pn_model_filename, prefix_size)
 
             print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
             print('elapsed_time:', time.time() - curr_time)
             counterr = 0
-            for line, line_id, line_group, times, times2, times3, times4 in zip(lines_s,
-                                                                                 lines_id_s,
-                                                                                 lines_group_s,
-                                                                                 lines_t_s,
-                                                                                 lines_t2_s,
-                                                                                 lines_t3_s,
-                                                                                 lines_t4_s):
+            for line, line_id, line_group, times, times2, times3, times4 \
+                    in zip(lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s):
                 times.append(0)
                 cropped_line_id = line_id
                 cropped_line = ''.join(line[:prefix_size])
@@ -190,9 +145,8 @@ def run_experiments(log_name, models_folder, fold):
                         _, current_prediction_premis = queue_next_steps.get()
 
                         if not found_satisfying_constraint:
-                            if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line,
-                                                           log_name,
-                                                           prefix_size, current_prediction_premis.cropped_line_group):
+                            if verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
+                                                current_prediction_premis.cropped_line_group, None):
                                 # the formula verified and we can just finish the predictions
                                 # beam size is 1 because predict only sequence of events
                                 current_beam_size = 1
@@ -231,8 +185,8 @@ def run_experiments(log_name, models_folder, fold):
 
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
-                                if verify_formula_as_compliant(counter_id, temp_cropped_line, log_name, prefix_size,
-                                                               temp_cropped_line_group):
+                                if verify_with_data(pn_model_filename, counter_id, temp_cropped_line,
+                                                    temp_cropped_line_group, None):
                                     stop_symbol_probability_amplifier_current = 1
                                     # print('! predicted, end case')
                                     queue_next_steps = PriorityQueue()

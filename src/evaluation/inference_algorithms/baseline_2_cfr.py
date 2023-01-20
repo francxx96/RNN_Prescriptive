@@ -8,29 +8,27 @@ The code is expanded to also consider the Resource attribute
 from __future__ import division
 
 import csv
-import os.path
-import pdb
-import sys
+from pathlib import Path
 import time
 from queue import PriorityQueue
 from datetime import datetime, timedelta
-from inspect import getsourcefile
 
 import distance
 import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn import metrics
-from jellyfish._jellyfish import damerau_levenshtein_distance
+from jellyfish import damerau_levenshtein_distance
 import shared_variables
-from evaluation.server_replayer import verify_formula_as_compliant, verify_formula_ivan
+from evaluation.server_replayer import verify_with_data
 from evaluation.prepare_data_resource import amplify, get_symbol_ampl, encode, prepare_testing_data, \
-    select_declare_verified_traces
+    select_petrinet_verified_traces
 
+'''
 current_path = os.path.abspath(getsourcefile(lambda: 0))
 current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
-
 sys.path.insert(0, parent_dir)
+'''
 
 
 def run_experiments(log_name, models_folder, fold):
@@ -47,26 +45,9 @@ def run_experiments(log_name, models_folder, fold):
     start_time = time.time()
 
     # prepare the data
-    lines, \
-    lines_id, \
-    lines_group, \
-    lines_t, \
-    lines_t2, \
-    lines_t3, \
-    lines_t4, \
-    maxlen, \
-    chars, \
-    chars_group, \
-    char_indices, \
-    char_indices_group, \
-    divisor, \
-    divisor2, \
-    divisor3, \
-    predict_size, \
-    target_indices_char, \
-    target_indices_char_group, \
-    target_char_indices, \
-    target_char_indices_group = prepare_testing_data(log_name)
+    lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4, maxlen, chars, chars_group, char_indices,\
+        char_indices_group, divisor, divisor2, divisor3, predict_size, target_indices_char, target_indices_char_group, \
+        target_char_indices, target_char_indices_group = prepare_testing_data(log_name)
 
     # find cycles and modify the probability functionality goes here
     stop_symbol_probability_amplifier_current = 1
@@ -93,39 +74,24 @@ def run_experiments(log_name, models_folder, fold):
         def __lt__(self, other):
             return -self.probability_of < -other.probability_of
 
-    folder_path = shared_variables.outputs_folder + models_folder + '/' + str(fold) + '/results/LTL/'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    output_filename = folder_path + '%s_%s.csv' % (log_name, 'CFR')
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'LTL'
+    if not Path.exists(folder_path):
+        Path.mkdir(folder_path, parents=True)
+    output_filename = folder_path / (log_name + '_CFR.csv')
 
     with open(output_filename, 'w') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         # headers for the new file
-        spamwriter.writerow(["Prefix length",
-                             "Ground truth",
-                             "Predicted",
-                             "Damerau-Levenshtein",
-                             "Jaccard",
-                             "Ground truth times",
-                             "Predicted times",
-                             "RMSE",
-                             "MAE",
-                             "Median AE",
-                             "Ground Truth Group",
-                             "Predicted Group",
-                             "Damerau-Levenshtein Resource", "compliantness"])
-
+        spamwriter.writerow(["Prefix length", "Ground truth", "Predicted", "Damerau-Levenshtein", "Jaccard",
+                             "Ground truth times", "Predicted times", "RMSE", "MAE",
+                             "Median AE", "Ground Truth Group", "Predicted Group", "Damerau-Levenshtein Resource",
+                             "compliantness"])
 
         curr_time = time.time()
 
-        lines_s, \
-        lines_id_s, \
-        lines_group_s, \
-        lines_t_s, \
-        lines_t2_s, \
-        lines_t3_s, \
-        lines_t4_s = select_declare_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2,
-                                                        lines_t3, lines_t4, pn_model_filename, None)
+        lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s \
+            = select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2, lines_t3,
+                                              lines_t4, pn_model_filename, None)
 
         print("formulas verified: " + str(len(lines_s)) + " out of : " + str(len(lines)))
         print('elapsed_time:', time.time() - curr_time)
@@ -133,9 +99,8 @@ def run_experiments(log_name, models_folder, fold):
         for prefix_size in range(prefix_size_pred_from, prefix_size_pred_to):
             print("prefix size: " + str(prefix_size))
             counterr = 0
-            for line, line_id, line_group, times, times2, times3, times4 in zip(lines_s, lines_id_s, lines_group_s,
-                                                                                lines_t_s, lines_t2_s, lines_t3_s,
-                                                                                lines_t4_s):
+            for line, line_id, line_group, times, times2, times3, times4 \
+                    in zip(lines_s, lines_id_s, lines_group_s, lines_t_s, lines_t2_s, lines_t3_s, lines_t4_s):
                 times.append(0)
                 cropped_line_id = line_id
                 cropped_line = ''.join(line[:prefix_size])
@@ -162,7 +127,7 @@ def run_experiments(log_name, models_folder, fold):
                 ground_truth_t = case_end_time - ground_truth_t
 
                 queue_next_steps = PriorityQueue()
-                ##queue_next_steps.put((-search_node_root.probability_of, search_node_root))
+                # queue_next_steps.put((-search_node_root.probability_of, search_node_root))
                 queue_next_steps.put(search_node_root)
 
                 queue_next_steps_future = PriorityQueue()
@@ -177,12 +142,12 @@ def run_experiments(log_name, models_folder, fold):
                         if queue_next_steps.empty():
                             break
 
-                        ##_, current_prediction_premis = queue_next_steps.get()
+                        # _, current_prediction_premis = queue_next_steps.get()
                         current_prediction_premis = queue_next_steps.get()
-                        #"""
+
                         if not found_satisfying_constraint:
-                            if verify_formula_ivan(counter_id, current_prediction_premis.cropped_line, log_name, None, "LTL"):
-                            #if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name):
+                            if verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line, None, None):
+                            # if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name):
                                 # the formula verified and we can just finish the predictions
                                 # beam size is 1 because predict only sequence of events
                                 current_beam_size = 1
@@ -190,7 +155,7 @@ def run_experiments(log_name, models_folder, fold):
                                 # overwrite new queue
                                 queue_next_steps_future = PriorityQueue()
                                 found_satisfying_constraint = True
-                        #"""
+
                         enc = current_prediction_premis.data
                         temp_cropped_line = current_prediction_premis.cropped_line
                         temp_cropped_line_group = current_prediction_premis.cropped_line_group
@@ -221,8 +186,8 @@ def run_experiments(log_name, models_folder, fold):
 
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
-                                if verify_formula_ivan(counter_id, temp_cropped_line, log_name, None, "LTL"):
-                                #if verify_formula_as_compliant(counter_id, temp_cropped_line, log_name):
+                                if verify_with_data(pn_model_filename, counter_id, temp_cropped_line, None, None):
+                                # if verify_formula_as_compliant(counter_id, temp_cropped_line, log_name):
                                     stop_symbol_probability_amplifier_current = 1
                                     # print('! predicted, end case')
                                     queue_next_steps = PriorityQueue()
@@ -249,7 +214,7 @@ def run_experiments(log_name, models_folder, fold):
                                                   temp_cropped_line_group, cropped_times4, temp_total_predicted_time,
                                                   current_prediction_premis.probability_of + np.log(probability_this))
 
-                            ##queue_next_steps_future.put((-temp.probability_of, temp))
+                            # queue_next_steps_future.put((-temp.probability_of, temp))
                             queue_next_steps_future.put(temp)
                             # print 'INFORMATION: ' + str(counterr) + ' ' + str(i) + ' ' + str(k) + ' ' + str(j) + ' ' + \
                             #       temp_cropped_line[prefix_size:] + "     " + str(temp.probability_of)
@@ -275,8 +240,8 @@ def run_experiments(log_name, models_folder, fold):
                     predicted_group = (current_prediction_premis.cropped_line_group[prefix_size:])
                     total_predicted_time = current_prediction_premis.total_predicted_time
 
-                compliantness = verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line,
-                                                            log_name)
+                compliantness = verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
+                                                 None, None)
                 compliantness = 1 if compliantness else 0
 
                 if len(ground_truth) > 0:

@@ -61,8 +61,7 @@ def encode_log(log_path: Path) -> str:
     if log_filename.endswith('.xes') or log_filename.endswith('.xes.gz'):
         xes_log = pm4py.read_xes(str(log_path))
 
-        csv_df = pm4py.convert_to_dataframe(xes_log)
-        csv_df = csv_df.rename(columns={'concept:name': 'ActivityID', 'case:concept:name': 'CaseID',
+        csv_df = xes_log.rename(columns={'concept:name': 'ActivityID', 'case:concept:name': 'CaseID',
                                               'org:group': 'Resource', 'time:timestamp': 'CompleteTimestamp'})
         # csv_df = csv_df.drop(['lifecycle:transition', 'case:trace:type'], axis=1)
         csv_df = csv_df[['CaseID', 'ActivityID', 'CompleteTimestamp', 'Resource']]

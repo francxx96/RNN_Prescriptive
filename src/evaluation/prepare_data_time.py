@@ -10,7 +10,7 @@ from queue import PriorityQueue
 from datetime import datetime
 
 import shared_variables
-from evaluation.server_replayer import verify_with_elapsed_time, verify_formula_as_compliant
+from evaluation.server_replayer import verify_with_elapsed_time
 from shared_variables import get_unicode_from_int
 
 import copy
@@ -246,6 +246,7 @@ def select_declare_verified_traces(log_name, lines, lines_id, lines_group, lines
     return lines_v, lines_id_v, lines_group_v, lines_time_v, lines_t_v, lines_t2_v, lines_t3_v, lines_t4_v
 
 
+'''
 # selects traces verified by LTL formula
 def select_formula_verified_traces(lines, lines_id, lines_group, lines_time, lines_t, lines_t2, lines_t3,
                                    lines_t4, formula, prefix=0):
@@ -279,6 +280,7 @@ def select_formula_verified_traces(lines, lines_id, lines_group, lines_time, lin
             lines_t4_v.append(times4)
 
     return lines_v, lines_id_v, lines_group_v, lines_time_v, lines_t_v, lines_t2_v, lines_t3_v, lines_t4_v
+'''
 
 
 # define helper functions

@@ -16,8 +16,6 @@ from datetime import datetime
 import numpy as np
 
 import shared_variables
-from evaluation.server_replayer import verify_formula_as_compliant
-from shared_variables import get_unicode_from_int
 
 
 def prepare_testing_data(eventlog):
@@ -55,7 +53,7 @@ def prepare_testing_data(eventlog):
             times2 = []
             times3 = []
             numlines += 1
-        line += get_unicode_from_int(row[1])  # add unicode represantation to case variable
+        line += shared_variables.get_unicode_from_int(row[1])  # add unicode represantation to case variable
         timesincelastevent = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(time.mktime(lasteventtime))
         timesincecasestart = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(time.mktime(casestarttime))
         # midnight = datetime.fromtimestamp(time.mktime(t)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -79,14 +77,14 @@ def prepare_testing_data(eventlog):
     print('divisor: {}'.format(divisor))
     divisor2 = np.mean([item for sublist in timeseqs2 for item in sublist])
     print('divisor2: {}'.format(divisor2))
-    #divisor3 = np.mean(map(lambda x: np.mean(map(lambda y: x[len(x) - 1] - y, x)), timeseqs2))
+    # divisor3 = np.mean(map(lambda x: np.mean(map(lambda y: x[len(x) - 1] - y, x)), timeseqs2))
     divisor3 = np.mean([np.mean([x[len(x) - 1] - y for y in x]) for x in timeseqs2])
     print('divisor3: {}'.format(divisor3))
 
     elems_per_fold = int(round(numlines / 3))
     fold1and2lines = lines[:2 * elems_per_fold]
-    #fold1and2lines = map(lambda x: x + '!', fold1and2lines)
-    #maxlen = max(map(lambda x: len(x), fold1and2lines))
+    # fold1and2lines = map(lambda x: x + '!', fold1and2lines)
+    # maxlen = max(map(lambda x: len(x), fold1and2lines))
     fold1and2lines = [x + '!' for x in fold1and2lines]
     maxlen = [len(x) for x in fold1and2lines]
 
@@ -118,9 +116,10 @@ def prepare_testing_data(eventlog):
     predict_size = maxlen
 
     return lines, lines_t, lines_t2, lines_t3, maxlen, chars, char_indices, divisor, divisor2, divisor3, predict_size, \
-           target_indices_char, target_char_indices
+        target_indices_char, target_char_indices
 
 
+'''
 def select_formula_verified_traces(lines, lines_t, lines_t2, lines_t3, formula, prefix=0):
     # select only lines with formula verified
     lines_v = []
@@ -135,6 +134,7 @@ def select_formula_verified_traces(lines, lines_t, lines_t2, lines_t3, formula, 
             lines_t3_v.append(times3)
 
     return lines_v, lines_t_v, lines_t2_v, lines_t3_v
+'''
 
 
 # define helper functions
