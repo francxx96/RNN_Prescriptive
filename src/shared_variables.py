@@ -13,6 +13,7 @@ import pandas as pd
 
 ascii_offset = 161
 beam_size = 3
+fitness_threshold = 1
 
 project_folder = Path.cwd().parents[0]
 outputs_folder = project_folder / 'output_files'

@@ -5,6 +5,7 @@ here the beam search (with breath-first-search) is implemented, to find complian
 
 The code is expanded to also consider the Resource attribute
 """
+
 from __future__ import division
 
 import csv
@@ -19,7 +20,7 @@ from tensorflow.keras.models import load_model
 from sklearn import metrics
 from jellyfish import damerau_levenshtein_distance
 import shared_variables
-from evaluation.server_replayer import verify_with_data
+from evaluation.server_replayer import get_pn_fitness
 from evaluation.prepare_data_resource import amplify, get_symbol_ampl, encode, prepare_testing_data, \
     select_petrinet_verified_traces
 
@@ -34,7 +35,6 @@ sys.path.insert(0, parent_dir)
 def run_experiments(log_name, models_folder, fold):
     beam_size = shared_variables.beam_size
     model_filename = shared_variables.extract_last_model_checkpoint(log_name, models_folder, fold, 'CFR')
-    # declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
     pn_model_filename = shared_variables.extract_petrinet_filename(log_name)
 
     log_settings_dictionary = shared_variables.log_settings[log_name]
@@ -74,7 +74,7 @@ def run_experiments(log_name, models_folder, fold):
         def __lt__(self, other):
             return -self.probability_of < -other.probability_of
 
-    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'LTL'
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline2'
     if not Path.exists(folder_path):
         Path.mkdir(folder_path, parents=True)
     output_filename = folder_path / (log_name + '_CFR.csv')
@@ -146,8 +146,8 @@ def run_experiments(log_name, models_folder, fold):
                         current_prediction_premis = queue_next_steps.get()
 
                         if not found_satisfying_constraint:
-                            if verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line, None, None):
-                            # if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name):
+                            if get_pn_fitness(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
+                                              current_prediction_premis.cropped_line_group) >= shared_variables.fitness_threshold:
                                 # the formula verified and we can just finish the predictions
                                 # beam size is 1 because predict only sequence of events
                                 current_beam_size = 1
@@ -186,8 +186,8 @@ def run_experiments(log_name, models_folder, fold):
 
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
-                                if verify_with_data(pn_model_filename, counter_id, temp_cropped_line, None, None):
-                                # if verify_formula_as_compliant(counter_id, temp_cropped_line, log_name):
+                                if get_pn_fitness(pn_model_filename, counter_id, temp_cropped_line,
+                                                  temp_cropped_line_group) >= shared_variables.fitness_threshold:
                                     stop_symbol_probability_amplifier_current = 1
                                     # print('! predicted, end case')
                                     queue_next_steps = PriorityQueue()
@@ -240,9 +240,11 @@ def run_experiments(log_name, models_folder, fold):
                     predicted_group = (current_prediction_premis.cropped_line_group[prefix_size:])
                     total_predicted_time = current_prediction_premis.total_predicted_time
 
-                compliantness = verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
-                                                 None, None)
-                compliantness = 1 if compliantness else 0
+                if get_pn_fitness(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
+                                  current_prediction_premis.cropped_line_group) >= 1:
+                    compliantness = 1
+                else:
+                    compliantness = 0
 
                 if len(ground_truth) > 0:
                     output.append(prefix_size)

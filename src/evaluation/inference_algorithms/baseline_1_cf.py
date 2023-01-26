@@ -24,7 +24,6 @@ from evaluation.prepare_data_resource import select_petrinet_verified_traces, pr
 
 def run_experiments(log_name, models_folder, fold):
     model_filename = shared_variables.extract_last_model_checkpoint(log_name, models_folder, fold, 'CF')
-    # declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
     pn_model_filename = shared_variables.extract_petrinet_filename(log_name)
 
     log_settings_dictionary = shared_variables.log_settings[log_name]
@@ -69,7 +68,7 @@ def run_experiments(log_name, models_folder, fold):
     one_ahead_gt = []
     one_ahead_pred = []
 
-    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline'
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline1'
     if not Path.exists(folder_path):
         Path.mkdir(folder_path, parents=True)
     output_filename = folder_path / (log_name + '_CF.csv')

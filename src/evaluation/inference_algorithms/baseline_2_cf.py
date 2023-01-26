@@ -20,7 +20,7 @@ from tensorflow.keras.models import load_model
 from sklearn import metrics
 from jellyfish import damerau_levenshtein_distance
 import shared_variables
-from evaluation.server_replayer import verify_with_data
+from evaluation.server_replayer import get_pn_fitness
 from evaluation.prepare_data import amplify, get_symbol_ampl
 from evaluation.prepare_data import encode
 from evaluation.prepare_data_resource import prepare_testing_data, select_petrinet_verified_traces
@@ -29,7 +29,6 @@ from evaluation.prepare_data_resource import prepare_testing_data, select_petrin
 def run_experiments(log_name, models_folder, fold):
     beam_size = shared_variables.beam_size
     model_filename = shared_variables.extract_last_model_checkpoint(log_name, models_folder, fold, 'CF')
-    # declare_model_filename = shared_variables.extract_declare_model_filename(log_name)
     pn_model_filename = shared_variables.extract_petrinet_filename(log_name)
 
     log_settings_dictionary = shared_variables.log_settings[log_name]
@@ -67,7 +66,7 @@ def run_experiments(log_name, models_folder, fold):
         def __lt__(self, other):
             return -self.probability_of < -other.probability_of
 
-    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'LTL'
+    folder_path = shared_variables.outputs_folder / models_folder / str(fold) / 'results' / 'baseline2'
     if not Path.exists(folder_path):
         Path.mkdir(folder_path, parents=True)
     output_filename = folder_path / (log_name + '_CF.csv')
@@ -100,7 +99,7 @@ def run_experiments(log_name, models_folder, fold):
                 # initialize root of the tree for beam search
                 total_predicted_time_initialization = 0
                 search_node_root = NodePrediction(
-                    encode(cropped_line, cropped_times, cropped_times3, maxlen, chars,char_indices, divisor, divisor2),
+                    encode(cropped_line, cropped_times, cropped_times3, maxlen, chars, char_indices, divisor, divisor2),
                     cropped_line,
                     total_predicted_time_initialization)
 
@@ -136,8 +135,8 @@ def run_experiments(log_name, models_folder, fold):
                         # print(f"k is {k}, current node is {current_prediction_premis}")
 
                         if not found_satisfying_constraint:
-                            if verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line, None, None):
-                            # if verify_formula_as_compliant(counter_id, current_prediction_premis.cropped_line, log_name):
+                            if get_pn_fitness(pn_model_filename, counter_id, current_prediction_premis.cropped_line) \
+                                    >= shared_variables.fitness_threshold:
                                 # print(f"k is {k}, current node {current_prediction_premis} is compliant")
                                 # the formula verified and we can just finish the predictions
                                 # beam size is 1 because predict only sequence of events
@@ -172,8 +171,8 @@ def run_experiments(log_name, models_folder, fold):
                                                               stop_symbol_probability_amplifier_current, j)
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
-                                if verify_with_data(pn_model_filename, counter_id, temp_cropped_line, None, None):
-                                # if verify_formula_as_compliant(counter, temp_cropped_line, log_name):
+                                if get_pn_fitness(pn_model_filename, counter_id, temp_cropped_line) \
+                                        >= shared_variables.fitness_threshold:
                                     # print(f"{temp_cropped_line} finished and compliant")
                                     one_ahead_pred.append(current_prediction_premis.total_predicted_time)
                                     one_ahead_gt.append(ground_truth_t)
@@ -182,7 +181,7 @@ def run_experiments(log_name, models_folder, fold):
                                     queue_next_steps = PriorityQueue()
                                     break
                                 else:
-                                    #print(f"{temp_cropped_line} finished and NOT compliant")
+                                    # print(f"{temp_cropped_line} finished and NOT compliant")
                                     continue
 
                             temp_cropped_line = current_prediction_premis.cropped_line + temp_prediction
@@ -193,10 +192,10 @@ def run_experiments(log_name, models_folder, fold):
 
                             temp = NodePrediction(temp_state_data, temp_cropped_line, temp_total_predicted_time,
                                                   current_prediction_premis.probability_of + np.log(probability_this))
-                            ## queue_next_steps_future.put((-temp.probability_of, temp))
+                            # queue_next_steps_future.put((-temp.probability_of, temp))
                             queue_next_steps_future.put(temp)
 
-                            # print 'INFORMATION: ' + str(counter) + ' ' + str(i) + ' ' + str(k) + ' ' + str(j) + ' ' + \
+                            # print 'INFORMATION: ' + str(counter) + ' ' + str(i) + ' ' + str(k) + ' ' + str(j) + ' ' +\
                             #       temp_cropped_line[prefix_size:] + "     " + str(temp.probability_of)
                     # print(f"Elements in queue_next_steps_future:")
                     # for el in queue_next_steps_future.queue:
@@ -220,9 +219,10 @@ def run_experiments(log_name, models_folder, fold):
                     predicted = (current_prediction_premis.cropped_line[prefix_size:])
                     total_predicted_time = current_prediction_premis.total_predicted_time
 
-                compliantness = verify_with_data(pn_model_filename, counter_id, current_prediction_premis.cropped_line,
-                                                            None, None)
-                compliantness = 1 if compliantness else 0
+                if get_pn_fitness(pn_model_filename, counter_id, current_prediction_premis.cropped_line) >= 1:
+                    compliantness = 1
+                else:
+                    compliantness = 0
 
                 if len(ground_truth) > 0:
                     output.append(prefix_size)

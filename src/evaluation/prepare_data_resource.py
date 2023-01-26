@@ -17,7 +17,7 @@ from datetime import datetime
 import numpy as np
 
 import shared_variables
-from evaluation.server_replayer import verify_with_data
+from evaluation.server_replayer import get_pn_fitness
 
 
 def prepare_testing_data(eventlog):
@@ -141,9 +141,9 @@ def prepare_testing_data(eventlog):
     predict_size = maxlen
 
     return lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4, maxlen, \
-           chars, chars_group, char_indices, char_indices_group, \
-           divisor, divisor2, divisor3, predict_size, \
-           target_indices_char, target_indices_char_group, target_char_indices, target_char_indices_group
+        chars, chars_group, char_indices, char_indices_group, \
+        divisor, divisor2, divisor3, predict_size, \
+        target_indices_char, target_indices_char_group, target_char_indices, target_char_indices_group
 
 
 # selects traces verified by a petri net model
@@ -160,7 +160,7 @@ def select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, line
     for line, line_id, line_group, times, times2, times3, times4 \
             in zip(lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4):
 
-        if verify_with_data(path_to_declare_model_file, line_id, line, line_group, times4):
+        if get_pn_fitness(path_to_declare_model_file, line_id, line, line_group) >= 1:
             lines_v.append(line)
             lines_id_v.append(line_id)
             lines_group_v.append(line_group)
@@ -170,34 +170,6 @@ def select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, line
             lines_t4_v.append(times4)
 
     return lines_v, lines_id_v, lines_group_v, lines_t_v, lines_t2_v, lines_t3_v, lines_t4_v
-
-
-'''
-# Select traces verified by LTL formula
-def select_formula_verified_traces(log_name, lines, lines_id, lines_group, lines_t, lines_t2, lines_t3,
-                                   lines_t4, formula, prefix=0):
-    # select only lines with formula verified
-    lines_v = []
-    lines_id_v = []
-    lines_group_v = []
-    lines_t_v = []
-    lines_t2_v = []
-    lines_t3_v = []
-    lines_t4_v = []
-
-    for line, line_id, line_group, times, times2, times3, times4 \
-            in zip(lines, lines_id, lines_group, lines_t, lines_t2, lines_t3, lines_t4):
-        if verify_formula_as_compliant(line_id, line, log_name, prefix):
-            lines_v.append(line)
-            lines_id_v.append(line_id)
-            lines_group_v.append(line_group)
-            lines_t_v.append(times)
-            lines_t2_v.append(times2)
-            lines_t3_v.append(times3)
-            lines_t4_v.append(times4)
-
-    return lines_v, lines_id_v, lines_group_v, lines_t_v, lines_t2_v, lines_t3_v, lines_t4_v
-'''
 
 
 # define helper functions
