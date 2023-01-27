@@ -91,9 +91,6 @@ class ResultParser:
         column = ResultParser._metrics.index(metric) * len(self._model_types) * 2 \
                  + (self._model_types.index(model_type) * len(self._model_types))
 
-        if metric == 'declare':
-            column -= 2
-
         table[row, column] = scores[0]
         if scores.shape[0] == 2:
             table[row, column + 1] = scores[1]
@@ -141,7 +138,7 @@ class ResultParser:
             if score == reference_score:
                 print('\\cellcolor[HTML]{%s}\\textbf{%.0f %.0f}' % (column_color, 100*score, 100*std), end=' '),
             else:
-                print('%.0f %.0f' %(100*score, 100*std), end=' '),
+                print('%.0f %.0f' % (100*score, 100*std), end=' '),
         elif highlight_type == ResultParser.HighlightTypes.IMPROVEMENT_SCORE:
             if score > 0:
                 print('\\cellcolor[HTML]{%s}\\textbf{%.0f %.0f}' % (column_color, 100*score, 100*std), end=' '),
@@ -215,8 +212,6 @@ class ResultParser:
                 for log_name in self._log_names:
                     for metric in self._metrics:
                         for model_type in self._model_types:
-                            if metric == 'declare' and model_type == 'CF':
-                                continue
                             filepath = folderpath / str(fold) / 'results' / metric / f"{log_name}_{model_type}.csv"
                             scores = self._parse_log(filepath, model_type == 'CFR')
                             self._populate_table(fold_table, scores, log_name, metric, model_type)
@@ -231,7 +226,8 @@ class ResultParser:
         reference_table, std_ref = self._load_table(reference)
 
         # self._show_comparison_image(target_table, reference_table)
-        self._print_latex_table(target_table - reference_table, std_target - std_ref, highlight_type, table_caption, table_label)
+        self._print_latex_table(target_table - reference_table, std_target - std_ref, highlight_type, table_caption,
+                                table_label)
 
 
 if __name__ == "__main__":
