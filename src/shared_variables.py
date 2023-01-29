@@ -63,9 +63,10 @@ def encode_log(log_path: Path) -> str:
         xes_log = pm4py.read_xes(str(log_path))
 
         csv_df = xes_log.rename(columns={'concept:name': 'ActivityID', 'case:concept:name': 'CaseID',
-                                              'org:group': 'Resource', 'time:timestamp': 'CompleteTimestamp'})
+                                         'org:group': 'Resource', 'time:timestamp': 'CompleteTimestamp',
+                                         'case:label': 'Label'})
         # csv_df = csv_df.drop(['lifecycle:transition', 'case:trace:type'], axis=1)
-        csv_df = csv_df[['CaseID', 'ActivityID', 'CompleteTimestamp', 'Resource']]
+        csv_df = csv_df[['CaseID', 'ActivityID', 'CompleteTimestamp', 'Resource', 'Label']]
         csv_df['CompleteTimestamp'] = pd.to_datetime(csv_df['CompleteTimestamp'], utc=True).dt.tz_localize(None)
         csv_df['CompleteTimestamp'] = csv_df['CompleteTimestamp'].dt.round('s')
 
@@ -93,7 +94,7 @@ def encode_log(log_path: Path) -> str:
 log_settings = {
     'Data-flow log': {
         'formula': "",
-        'prefix_size_pred_from': 7,
+        'prefix_size_pred_from': 4,
         'prefix_size_pred_to': 8
     },
 }

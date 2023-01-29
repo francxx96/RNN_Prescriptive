@@ -17,8 +17,6 @@ from __future__ import print_function, division
 import copy
 import csv
 import os
-import time
-from datetime import datetime
 
 import numpy as np
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
@@ -52,12 +50,9 @@ class TrainCFR:
             group_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
             group_output = BatchNormalization()(group_output)
 
-            time_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
-            time_output = BatchNormalization()(time_output)
-
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(activity_output)
             group_output = Dense(len(target_chars_group), activation='softmax', name='group_output')(group_output)
-            time_output = Dense(1, name='time_output')(time_output)
+            outcome_output = Dense(1, name='outcome_output')(processed)
 
             opt = Nadam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004, clipvalue=3)
         else:
@@ -75,91 +70,73 @@ class TrainCFR:
 
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(processed)
             group_output = Dense(len(target_chars_group), activation='softmax', name='group_output')(processed)
-            time_output = Dense(1, name='time_output')(processed)
+            outcome_output = Dense(1, name='outcome_output')(processed)
             opt = Adam()
 
-        model = Model(main_input, [activity_output, group_output, time_output])
+        model = Model(main_input, [activity_output, group_output, outcome_output])
         model.compile(loss={'act_output': 'categorical_crossentropy', 'group_output': 'categorical_crossentropy',
-                            'time_output': 'mae'}, optimizer=opt)
+                            'outcome_output': 'binary_crossentropy'}, optimizer=opt)
         return model
 
     @staticmethod
-    def _train_model(model, checkpoint_name, X, y_a, y_t, y_g):
+    def _train_model(model, checkpoint_name, X, y_a, y_o, y_g):
         model_checkpoint = ModelCheckpoint(checkpoint_name, save_best_only=True)
         lr_reducer = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, verbose=0, mode='auto',
                                        min_delta=0.0001, cooldown=0, min_lr=0)
 
         early_stopping = EarlyStopping(monitor='val_loss', patience=7)
 
-        history = model.fit(X, {'act_output': y_a, 'time_output': y_t, 'group_output': y_g},
+        history = model.fit(X, {'act_output': y_a, 'outcome_output': y_o, 'group_output': y_g},
                             validation_split=validation_split, verbose=2, batch_size=32,
                             callbacks=[early_stopping, model_checkpoint, lr_reducer], epochs=epochs)
         plot_loss(history, os.path.dirname(checkpoint_name))
 
     @staticmethod
     def train(log_name, models_folder, use_old_model):
-        lines = []
-        lines_group = []
-        timeseqs = []
-        timeseqs2 = []
+        lines = []          # list of all the activity sequences
+        lines_group = []    # list of all the resource sequences
+        outcomes = []       # outcome of each activity sequence (i.e. each case)
+
         lastcase = ''
         line = ''
         line_group = ''
+        outcome = ''
         first_line = True
-        times = []
-        times2 = []
         numlines = 0
-        casestarttime = None
-        lasteventtime = None
 
-        path = shared_variables.data_folder.joinpath(log_name + '.csv')
+        path = shared_variables.data_folder / (log_name + '.csv')
         print(path)
         csvfile = open(str(path), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(spamreader, None)  # skip the headers
 
-        for row in spamreader:
-            t = time.strptime(row[2], "%Y-%m-%d %H:%M:%S")
-            if row[0] != lastcase:
-                casestarttime = t
-                lasteventtime = t
+        for row in spamreader:  # the rows are "CaseID,ActivityID,CompleteTimestamp,Resource,Label"
+            if row[0] != lastcase:  # 'lastcase' is to save the last executed case for the loop
                 lastcase = row[0]
-                if not first_line:
+                if not first_line:  # here we actually add the sequences to the lists
                     lines.append(line)
                     lines_group.append(line_group)
-                    timeseqs.append(times)
-                    timeseqs2.append(times2)
+                    outcomes.append(outcome)
                 line = ''
                 line_group = ''
-                times = []
-                times2 = []
                 numlines += 1
             line += get_unicode_from_int(row[1])
             line_group += get_unicode_from_int(row[3])
-            timesincelastevent = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(
-                time.mktime(lasteventtime))
-            timesincecasestart = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(
-                time.mktime(casestarttime))
-            timediff = 86400 * timesincelastevent.days + timesincelastevent.seconds
-            timediff2 = 86400 * timesincecasestart.days + timesincecasestart.seconds
-            times.append(timediff)
-            times2.append(timediff2)
-            lasteventtime = t
+            outcome = row[4]
             first_line = False
 
         # add last case
         lines.append(line)
         lines_group.append(line_group)
-        timeseqs.append(times)
-        timeseqs2.append(times2)
+        outcomes.append(outcome)
         numlines += 1
 
-        divisor = np.max([item for sublist in timeseqs for item in sublist])
-        print('divisor: {}'.format(divisor))
-        divisor2 = np.max([item for sublist in timeseqs2 for item in sublist])
-        print('divisor2: {}'.format(divisor2))
-
+        # separate training data into 2(out of 3) parts
         elements_per_fold = int(round(numlines / 3))
+
+        print("average length of the trace: ", sum([len(x) for x in lines]) / len(lines))
+        print("number of traces: ", len(lines))
+
         fold1 = lines[:elements_per_fold]
         fold1_group = lines_group[:elements_per_fold]
         fold2 = lines[elements_per_fold:2 * elements_per_fold]
@@ -173,17 +150,16 @@ class TrainCFR:
         lines = [x + '!' for x in lines]
         maxlen = max([len(x) for x in lines])
 
-        chars = list(map(lambda x: set(x), lines))
-        chars = list(set().union(*chars))
-        chars.sort()
+        # next lines here to get all possible characters for events and annotate them with numbers
+        chars = list(map(lambda x: set(x), lines))  # remove duplicate activities from each separate case
+        chars = list(set().union(*chars))   # creates a list of all the unique activities in the data set
+        chars.sort()    # sorts the chars in alphabetical order
         target_chars = copy.copy(chars)
-        #if '!' in chars:
+        # if '!' in chars:
         chars.remove('!')
         print('total chars: {}, target chars: {}'.format(len(chars), len(target_chars)))
         char_indices = dict((c, i) for i, c in enumerate(chars))
         target_char_indices = dict((c, i) for i, c in enumerate(target_chars))
-
-        # lines_group = map(lambda x: x+'!', lines_group)
 
         chars_group = list(map(lambda x: set(x), lines_group))
         chars_group = list(set().union(*chars_group))
@@ -194,82 +170,45 @@ class TrainCFR:
         char_indices_group = dict((c, i) for i, c in enumerate(chars_group))
         target_char_indices_group = dict((c, i) for i, c in enumerate(target_chars_group))
 
-        csvfile = open(str(shared_variables.data_folder.joinpath(log_name + '.csv')), 'r')
+        csvfile = open(str(path), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
         next(spamreader, None)  # skip the headers
         lastcase = ''
         line = ''
         line_group = ''
+        outcome = ''
         first_line = True
         lines = []
         lines_group = []
-        timeseqs = []
-        timeseqs2 = []
-        timeseqs3 = []
-        timeseqs4 = []
-        times = []
-        times2 = []
-        times3 = []
-        times4 = []
+        outcomes = []
         numlines = 0
-        casestarttime = None
-        lasteventtime = None
-        for row in spamreader:
-            t = time.strptime(row[2], "%Y-%m-%d %H:%M:%S")
+        for row in spamreader:  # the rows are "CaseID,ActivityID,CompleteTimestamp,Resource,Label"
+            # new case starts
             if row[0] != lastcase:
-                casestarttime = t
-                lasteventtime = t
                 lastcase = row[0]
                 if not first_line:
                     lines.append(line)
                     lines_group.append(line_group)
-                    timeseqs.append(times)
-                    timeseqs2.append(times2)
-                    timeseqs3.append(times3)
-                    timeseqs4.append(times4)
+                    outcomes.append(outcome)
                 line = ''
                 line_group = ''
-                times = []
-                times2 = []
-                times3 = []
-                times4 = []
                 numlines += 1
             line += get_unicode_from_int(row[1])
             line_group += get_unicode_from_int(row[3])
-            timesincelastevent = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(
-                time.mktime(lasteventtime))
-            timesincecasestart = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(
-                time.mktime(casestarttime))
-            midnight = datetime.fromtimestamp(time.mktime(t)).replace(hour=0, minute=0, second=0, microsecond=0)
-            timesincemidnight = datetime.fromtimestamp(time.mktime(t)) - midnight
-            timediff = 86400 * timesincelastevent.days + timesincelastevent.seconds
-            timediff2 = 86400 * timesincecasestart.days + timesincecasestart.seconds
-            timediff3 = timesincemidnight.seconds
-            timediff4 = datetime.fromtimestamp(time.mktime(t)).weekday()
-            times.append(timediff)
-            times2.append(timediff2)
-            times3.append(timediff3)
-            times4.append(timediff4)
-            lasteventtime = t
+            outcome = row[4]
             first_line = False
 
         # add last case
         lines.append(line)
         lines_group.append(line_group)
-        timeseqs.append(times)
-        timeseqs2.append(times2)
-        timeseqs3.append(times3)
-        timeseqs4.append(times4)
+        outcomes.append(outcome)
         numlines += 1
 
         elements_per_fold = int(round(numlines / 3))
 
         lines = lines[:-elements_per_fold]
         lines_group = lines_group[:-elements_per_fold]
-        lines_t = timeseqs[:-elements_per_fold]
-        lines_t2 = timeseqs2[:-elements_per_fold]
-        lines_t3 = timeseqs3[:-elements_per_fold]
-        lines_t4 = timeseqs4[:-elements_per_fold]
+        lines_o = outcomes[:-elements_per_fold]
 
         step = 1
         sentences = []
@@ -282,46 +221,31 @@ class TrainCFR:
         lines = [x + '!' for x in lines]
         lines_group = [x + '!' for x in lines_group]
 
-        sentences_t = []
-        sentences_t2 = []
-        sentences_t3 = []
-        sentences_t4 = []
-        next_chars_t = []
-        for line, line_group, line_t, line_t2, line_t3, line_t4 in zip(lines, lines_group, lines_t, lines_t2, lines_t3,
-                                                                        lines_t4):
+        sentences_o = []
+        for line, line_group, line_o in zip(lines, lines_group, lines_o):
             for i in range(0, len(line), step):
                 if i == 0:
                     continue
+                # we add iteratively, first symbol of the line, then two first, three...
                 sentences.append(line[0: i])
                 sentences_group.append(line_group[0:i])
-                sentences_t.append(line_t[0:i])
-                sentences_t2.append(line_t2[0:i])
-                sentences_t3.append(line_t3[0:i])
-                sentences_t4.append(line_t4[0:i])
+                sentences_o.append(outcome)
+
                 next_chars.append(line[i])
                 next_chars_group.append(line_group[i])
-                if i == len(line) - 1:  # special case to deal time of end character
-                    next_chars_t.append(0)
-                else:
-                    next_chars_t.append(line_t[i])
         print('nb sequences:', len(sentences))
 
         print('Vectorization...')
-        num_features = len(chars) + len(chars_group) + 5
+        num_features = len(chars) + len(chars_group) + 1
         print('num features: {}'.format(num_features))
         print('MaxLen: ', maxlen)
         X = np.zeros((len(sentences), maxlen, num_features), dtype=np.float32)
         y_a = np.zeros((len(sentences), len(target_chars)), dtype=np.float32)
         y_g = np.zeros((len(sentences), len(target_chars_group)), dtype=np.float32)
-        y_t = np.zeros((len(sentences)), dtype=np.float32)
+        y_o = np.zeros((len(sentences)), dtype=np.float32)
         for i, sentence in enumerate(sentences):
             leftpad = maxlen - len(sentence)
-            next_t = next_chars_t[i]
             sentence_group = sentences_group[i]
-            sentence_t = sentences_t[i]
-            sentence_t2 = sentences_t2[i]
-            sentence_t3 = sentences_t3[i]
-            sentence_t4 = sentences_t4[i]
             for t, char in enumerate(sentence):
                 for c in chars:
                     if c == char:
@@ -330,10 +254,6 @@ class TrainCFR:
                     if g == sentence_group[t]:
                         X[i, t + leftpad, len(chars) + char_indices_group[g]] = 1
                 X[i, t + leftpad, len(chars) + len(chars_group)] = t + 1
-                X[i, t + leftpad, len(chars) + len(chars_group) + 1] = sentence_t[t] / divisor
-                X[i, t + leftpad, len(chars) + len(chars_group) + 2] = sentence_t2[t] / divisor2
-                X[i, t + leftpad, len(chars) + len(chars_group) + 3] = sentence_t3[t] / 86400
-                X[i, t + leftpad, len(chars) + len(chars_group) + 4] = sentence_t4[t] / 7
             for c in target_chars:
                 if c == next_chars[i]:
                     y_a[i, target_char_indices[c]] = 1 - softness
@@ -344,9 +264,9 @@ class TrainCFR:
                     y_g[i, target_char_indices_group[g]] = 1 - softness
                 else:
                     y_g[i, target_char_indices_group[g]] = softness / (len(target_chars_group) - 1)
-            y_t[i] = next_t / divisor
+            y_o[i] = sentences_o[i]
 
         for fold in range(folds):
             model = TrainCFR._build_model(maxlen, num_features, target_chars, target_chars_group, use_old_model)
             checkpoint_name = create_checkpoints_path(log_name, models_folder, fold, 'CFR')
-            TrainCFR._train_model(model, checkpoint_name, X, y_a, y_t, y_g)
+            TrainCFR._train_model(model, checkpoint_name, X, y_a, y_o, y_g)
