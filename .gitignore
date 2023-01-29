@@ -3,6 +3,7 @@
 output_files/
 declare_models-xml/
 .idea/
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
