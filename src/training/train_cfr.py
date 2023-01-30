@@ -50,9 +50,12 @@ class TrainCFR:
             group_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
             group_output = BatchNormalization()(group_output)
 
+            outcome_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
+            outcome_output = BatchNormalization()(outcome_output)
+
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(activity_output)
             group_output = Dense(len(target_chars_group), activation='softmax', name='group_output')(group_output)
-            outcome_output = Dense(1, name='outcome_output')(processed)
+            outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(outcome_output)
 
             opt = Nadam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004, clipvalue=3)
         else:
@@ -70,7 +73,7 @@ class TrainCFR:
 
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(processed)
             group_output = Dense(len(target_chars_group), activation='softmax', name='group_output')(processed)
-            outcome_output = Dense(1, name='outcome_output')(processed)
+            outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(processed)
             opt = Adam()
 
         model = Model(main_input, [activity_output, group_output, outcome_output])
@@ -137,10 +140,10 @@ class TrainCFR:
         print("average length of the trace: ", sum([len(x) for x in lines]) / len(lines))
         print("number of traces: ", len(lines))
 
-        fold1 = lines[:elements_per_fold]
-        fold1_group = lines_group[:elements_per_fold]
-        fold2 = lines[elements_per_fold:2 * elements_per_fold]
-        fold2_group = lines_group[elements_per_fold:2 * elements_per_fold]
+        fold1 = lines[: elements_per_fold]
+        fold1_group = lines_group[: elements_per_fold]
+        fold2 = lines[elements_per_fold: 2*elements_per_fold]
+        fold2_group = lines_group[elements_per_fold: 2*elements_per_fold]
 
         lines = fold1 + fold2
         lines_group = fold1_group + fold2_group

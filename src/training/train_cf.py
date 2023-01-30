@@ -46,8 +46,11 @@ class TrainCF:
             activity_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
             activity_output = BatchNormalization()(activity_output)
 
+            outcome_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
+            outcome_output = BatchNormalization()(outcome_output)
+
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(activity_output)
-            outcome_output = Dense(1, name='outcome_output')(processed)
+            outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(outcome_output)
 
             opt = Nadam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004, clipvalue=3)
         else:
@@ -64,7 +67,7 @@ class TrainCF:
             processed = Dropout(0.5)(processed)
 
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(processed)
-            outcome_output = Dense(1, name='outcome_output')(processed)
+            outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(processed)
 
             opt = Adam()
 
