@@ -11,6 +11,10 @@ import pm4py
 from utils.util import encode_activities_and_resources
 import pandas as pd
 
+label_attribute_name = "label"
+pos_label = "deviant"
+neg_label = "regular"
+
 ascii_offset = 161
 beam_size = 3
 fitness_threshold = 1
@@ -45,11 +49,6 @@ def extract_last_model_checkpoint(log_name, models_folder, fold, model_type):
     latest_file = max(list_of_files, key=os.path.getctime)
     return latest_file
 
-'''
-def extract_declare_model_filename(log_name):
-    return str(declare_models_folder / (log_name + ".xml"))
-'''
-
 
 def extract_petrinet_filename(log_name):
     return str(pn_models_folder / (log_name + '.pnml'))
@@ -62,23 +61,26 @@ def encode_log(log_path: Path) -> str:
     if log_filename.endswith('.xes') or log_filename.endswith('.xes.gz'):
         xes_log = pm4py.read_xes(str(log_path))
 
-        csv_df = xes_log.rename(columns={'concept:name': 'ActivityID', 'case:concept:name': 'CaseID',
-                                         'org:group': 'Resource', 'time:timestamp': 'CompleteTimestamp',
-                                         'case:label': 'Label'})
-        # csv_df = csv_df.drop(['lifecycle:transition', 'case:trace:type'], axis=1)
-        csv_df = csv_df[['CaseID', 'ActivityID', 'CompleteTimestamp', 'Resource', 'Label']]
-        csv_df['CompleteTimestamp'] = pd.to_datetime(csv_df['CompleteTimestamp'], utc=True).dt.tz_localize(None)
-        csv_df['CompleteTimestamp'] = csv_df['CompleteTimestamp'].dt.round('s')
+        case_label = 'case:' + label_attribute_name
+        if set(xes_log[case_label].values) != {pos_label, neg_label}:
+            raise RuntimeError(f"Allowed trace labels: {[pos_label, neg_label]}"
+                               f", found {[xes_log['case_label'].values]}.")
+        xes_log[case_label].replace({neg_label: '0', pos_label: '1'}, inplace=True)
 
-    # elif log_filename.endswith('.csv'):
-    #    csv_df = pd.read_csv(filepath_or_buffer=str(log_path), sep=',')
+        xes_log = xes_log.rename(columns={'concept:name': 'ActivityID', 'case:concept:name': 'CaseID',
+                                          'org:group': 'Resource', 'time:timestamp': 'CompleteTimestamp',
+                                          case_label: 'Label'})
+        # xes_log = xes_log.drop(['lifecycle:transition', 'case:trace:type'], axis=1)
+        xes_log = xes_log[['CaseID', 'ActivityID', 'CompleteTimestamp', 'Resource', 'Label']]
+        xes_log['CompleteTimestamp'] = pd.to_datetime(xes_log['CompleteTimestamp'], utc=True).dt.tz_localize(None)
+        xes_log['CompleteTimestamp'] = xes_log['CompleteTimestamp'].dt.round('s')
 
     else:
         raise RuntimeError(f"Extension of {log_filename} must be '.xes' or '.xes.gz'!")
 
     global act_encoding
     global res_encoding
-    csv_df, act_encoding, res_encoding = encode_activities_and_resources(csv_df)
+    xes_log, act_encoding, res_encoding = encode_activities_and_resources(xes_log)
 
     if log_filename.endswith('.xes'):
         log_name = log_path.stem
@@ -86,7 +88,7 @@ def encode_log(log_path: Path) -> str:
         log_name = log_path.with_suffix("").stem
 
     enc_log_path = log_path.parent / (log_name + '.csv')
-    csv_df.to_csv(str(enc_log_path), index=False)
+    xes_log.to_csv(str(enc_log_path), index=False)
 
     return enc_log_path.stem
 
@@ -96,5 +98,11 @@ log_settings = {
         'formula': "",
         'prefix_size_pred_from': 4,
         'prefix_size_pred_to': 8
+    },
+
+    'sepsis_cases_1': {
+        'formula': "",
+        'prefix_size_pred_from': 3,
+        'prefix_size_pred_to': 5
     },
 }

@@ -12,9 +12,6 @@ from shared_variables import encode_log
 class ExperimentRunner:
     _log_names = [
         'Data-flow log.xes'
-        # 'sepsis_cases_1.xes',
-        # 'sepsis_cases_2.xes',
-        # 'sepsis_cases_4.xes',
     ]
 
     def __init__(self, use_old_model, port, python_port, train, evaluate):
@@ -63,12 +60,12 @@ class ExperimentRunner:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log', default=None, help='input log')
+    parser.add_argument('--log', default=['sepsis_cases_1.xes'], help='input log')
     parser.add_argument('--use_old_model', default=True, action='store_true', help='use old model')
     parser.add_argument('--port', type=int, default=25333, help='communication port (python port = port + 1)')
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--train', default=True, action='store_true', help='train without evaluating')
+    group.add_argument('--train', default=False, action='store_true', help='train without evaluating')
     group.add_argument('--evaluate', default=False, action='store_true', help='evaluate without training')
     group.add_argument('--full_run', default=False, action='store_true', help='train and evaluate model')
 

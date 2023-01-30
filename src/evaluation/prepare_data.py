@@ -2,7 +2,7 @@
 This script prepares data in the format for the testing
 algorithms to run
 
-Author: Anton Yeshchenko
+The script is expanded to the resource attribute
 """
 
 from __future__ import division
@@ -10,152 +10,139 @@ from __future__ import division
 import copy
 import csv
 import re
-import time
-from datetime import datetime
+from queue import PriorityQueue
 
 import numpy as np
 
 import shared_variables
+from evaluation.server_replayer import get_pn_fitness
 
 
 def prepare_testing_data(eventlog):
-    csvfile = open(shared_variables.data_folder + '%s' % eventlog, 'r')
+    csvfile = open(shared_variables.data_folder / (eventlog + '.csv'), 'r')
     spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
     next(spamreader, None)  # skip the headers
 
+    lines_id = []
+    lines = []  # list of all the activity sequences
+    lines_group = []  # list of all the resource sequences
+    outcomes = []  # outcome of each activity sequence (i.e. each case)
+
     lastcase = ''
     line = ''
+    line_group = ''
+    outcome = ''
     first_line = True
-    lines = []
-    timeseqs = []  # relative time since previous event
-    timeseqs2 = []  # relative time since case start
-    timeseqs3 = []  # absolute time of previous event
-    times = []
-    times2 = []
-    times3 = []
     numlines = 0
-    casestarttime = None
-    lasteventtime = None
 
-    for row in spamreader:
-        t = time.strptime(row[2], "%Y/%m/%d %H:%M:%S")
-        if row[0] != lastcase:  # check if new case is starting
-            casestarttime = t
-            lasteventtime = t
+    for row in spamreader:  # the rows are "CaseID,ActivityID,CompleteTimestamp,Resource,Label"
+        if row[0] != lastcase:  # 'lastcase' is to save the last executed case for the loop
             lastcase = row[0]
-            if not first_line:  # add case to list of cases
+            outcome = row[4]
+            if not first_line:  # here we actually add the sequences to the lists
                 lines.append(line)
-                timeseqs.append(times)
-                timeseqs2.append(times2)
-                timeseqs3.append(times3)
-            line = ''  # reinitialize case variables, because new case is starting
-            times = []
-            times2 = []
-            times3 = []
+                lines_group.append(line_group)
+            lines_id.append(lastcase)
+            outcomes.append(outcome)
+            line = ''
+            line_group = ''
             numlines += 1
-        line += shared_variables.get_unicode_from_int(row[1])  # add unicode represantation to case variable
-        timesincelastevent = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(time.mktime(lasteventtime))
-        timesincecasestart = datetime.fromtimestamp(time.mktime(t)) - datetime.fromtimestamp(time.mktime(casestarttime))
-        # midnight = datetime.fromtimestamp(time.mktime(t)).replace(hour=0, minute=0, second=0, microsecond=0)
-        # timesincemidnight = datetime.fromtimestamp(time.mktime(t)) - midnight
-        timediff = 86400 * timesincelastevent.days + timesincelastevent.seconds
-        timediff2 = 86400 * timesincecasestart.days + timesincecasestart.seconds
-        times.append(timediff)
-        times2.append(timediff2)
-        times3.append(datetime.fromtimestamp(time.mktime(t)))
-        lasteventtime = t
+        line += shared_variables.get_unicode_from_int(row[1])
+        line_group += shared_variables.get_unicode_from_int(row[3])
         first_line = False
 
     # add last case
     lines.append(line)
-    timeseqs.append(times)
-    timeseqs2.append(times2)
-    timeseqs3.append(times3)
+    lines_group.append(line_group)
     numlines += 1
 
-    divisor = np.mean([item for sublist in timeseqs for item in sublist])
-    print('divisor: {}'.format(divisor))
-    divisor2 = np.mean([item for sublist in timeseqs2 for item in sublist])
-    print('divisor2: {}'.format(divisor2))
-    # divisor3 = np.mean(map(lambda x: np.mean(map(lambda y: x[len(x) - 1] - y, x)), timeseqs2))
-    divisor3 = np.mean([np.mean([x[len(x) - 1] - y for y in x]) for x in timeseqs2])
-    print('divisor3: {}'.format(divisor3))
-
     elems_per_fold = int(round(numlines / 3))
-    fold1and2lines = lines[:2 * elems_per_fold]
+
+    fold1and2lines = lines[: 2*elems_per_fold]
     # fold1and2lines = map(lambda x: x + '!', fold1and2lines)
     # maxlen = max(map(lambda x: len(x), fold1and2lines))
     fold1and2lines = [x + '!' for x in fold1and2lines]
-    maxlen = [len(x) for x in fold1and2lines]
-
+    maxlen = max([len(x) for x in fold1and2lines])
     chars = list(map(lambda x: set(x), fold1and2lines))
     chars = list(set().union(*chars))
     chars.sort()
     target_chars = copy.copy(chars)
     if '!' in chars:
         chars.remove('!')
-    print('total chars: {}, target chars: {}'.format(len(chars), len(target_chars)))
     char_indices = dict((c, i) for i, c in enumerate(chars))
-    indices_char = dict((i, c) for i, c in enumerate(chars))
     target_char_indices = dict((c, i) for i, c in enumerate(target_chars))
     target_indices_char = dict((i, c) for i, c in enumerate(target_chars))
-    print(indices_char)
+
+    fold1and2lines_group = lines_group[: 2*elems_per_fold]
+    # fold1and2lines_group = map(lambda x: x + '!', fold1and2lines_group)
+    chars_group = list(map(lambda x: set(x), fold1and2lines_group))
+    chars_group = list(set().union(*chars_group))
+    chars_group.sort()
+    target_chars_group = copy.copy(chars_group)
+    # chars_group.remove('!')
+    char_indices_group = dict((c, i) for i, c in enumerate(chars_group))
+    target_char_indices_group = dict((c, i) for i, c in enumerate(target_chars_group))
+    target_indices_char_group = dict((i, c) for i, c in enumerate(target_chars_group))
 
     # we only need the third fold, because first two were used for training
-    fold3 = lines[2 * elems_per_fold:]
-    fold3_t = timeseqs[2 * elems_per_fold:]
-    fold3_t2 = timeseqs2[2 * elems_per_fold:]
-    fold3_t3 = timeseqs3[2 * elems_per_fold:]
-
-    lines = fold3
-    lines_t = fold3_t
-    lines_t2 = fold3_t2
-    lines_t3 = fold3_t3
+    lines = lines[2*elems_per_fold:]
+    lines_id = lines_id[2*elems_per_fold:]
+    lines_group = lines_group[2*elems_per_fold:]
+    lines_o = outcomes[2*elems_per_fold:]
 
     # set parameters
     predict_size = maxlen
 
-    return lines, lines_t, lines_t2, lines_t3, maxlen, chars, char_indices, divisor, divisor2, divisor3, predict_size, \
-        target_indices_char, target_char_indices
+    return lines, lines_id, lines_group, lines_o, maxlen, chars, chars_group, char_indices, char_indices_group, \
+        predict_size, target_indices_char, target_indices_char_group, target_char_indices, target_char_indices_group
 
 
-'''
-def select_formula_verified_traces(lines, lines_t, lines_t2, lines_t3, formula, prefix=0):
+# selects traces verified by a petri net model
+def select_petrinet_verified_traces(lines, lines_id, lines_group, lines_o, path_to_pn_model_file):
     # select only lines with formula verified
     lines_v = []
-    lines_t_v = []
-    lines_t2_v = []
-    lines_t3_v = []
-    for line, times, times2, times3 in zip(lines, lines_t, lines_t2, lines_t3):
-        if verify_formula_as_compliant(line, formula, prefix):
-            lines_v.append(line)
-            lines_t_v.append(times)
-            lines_t2_v.append(times2)
-            lines_t3_v.append(times3)
+    lines_id_v = []
+    lines_group_v = []
+    lines_o_v = []
 
-    return lines_v, lines_t_v, lines_t2_v, lines_t3_v
-'''
+    for line, line_id, line_group, outcomes in zip(lines, lines_id, lines_group, lines_o):
+        if get_pn_fitness(path_to_pn_model_file, line_id, line, line_group) >= 1:
+            lines_v.append(line)
+            lines_id_v.append(line_id)
+            lines_group_v.append(line_group)
+            lines_o_v.append(outcomes)
+
+    return lines_v, lines_id_v, lines_group_v, lines_o_v
 
 
 # define helper functions
 # this one encodes the current sentence into the onehot encoding
-def encode(sentence, times, times3, maxlen, chars, char_indices, divisor, divisor2):
-    num_features = len(chars) + 5
+def encode(sentence, maxlen, chars, char_indices):
+    num_features = len(chars) + 1
     x = np.zeros((1, maxlen, num_features), dtype=np.float32)
     leftpad = maxlen - len(sentence)
-    times2 = np.cumsum(times)
     for t, char in enumerate(sentence):
-        midnight = times3[t].replace(hour=0, minute=0, second=0, microsecond=0)
-        timesincemidnight = times3[t] - midnight
-        # multiset_abstraction = Counter(sentence[:t + 1])
         for c in chars:
             if c == char:
                 x[0, t + leftpad, char_indices[c]] = 1
         x[0, t + leftpad, len(chars)] = t + 1
-        x[0, t + leftpad, len(chars) + 1] = times[t] / divisor
-        x[0, t + leftpad, len(chars) + 2] = times2[t] / divisor2
-        x[0, t + leftpad, len(chars) + 3] = timesincemidnight.seconds / 86400
-        x[0, t + leftpad, len(chars) + 4] = times3[t].weekday() / 7
+    return x
+
+
+# define helper functions
+# this one encodes the current sentence into the onehot encoding
+def encode_with_group(sentence, sentence_group, maxlen, chars, chars_group, char_indices, char_indices_group):
+    num_features = len(chars) + len(chars_group) + 1
+    x = np.zeros((1, maxlen, num_features), dtype=np.float32)
+    leftpad = maxlen - len(sentence)
+    for t, char in enumerate(sentence):
+        for c in chars:
+            if c == char:
+                x[0, t + leftpad, char_indices[c]] = 1
+        for g in chars_group:
+            if g == sentence_group[t]:
+                x[0, t + leftpad, len(char_indices) + char_indices_group[g]] = 1
+        x[0, t + leftpad, len(chars) + len(chars_group)] = t + 1
     return x
 
 
@@ -166,6 +153,12 @@ def get_symbol(predictions, target_indices_char, ith_best=0):
 
 
 # modify to be able to get second best prediction
+def get_group_symbol(predictions, target_indices_char_group, vth_best=0):
+    v = np.argsort(predictions)[len(predictions) - vth_best - 1]
+    return target_indices_char_group[v]
+
+
+# modify to be able to get second-best prediction
 def get_symbol_ampl(predictions, target_indices_char, target_char_indices, start_of_the_cycle_symbol,
                     stop_symbol_probability_amplifier_current, ith_best=0):
     a_pred = list(predictions)
@@ -176,11 +169,21 @@ def get_symbol_ampl(predictions, target_indices_char, target_char_indices, start
     return target_indices_char[i]
 
 
+# modify to be able to get second-best prediction
+def adjust_probabilities(predictions, target_char_indices, start_of_the_cycle_symbol,
+                         stop_symbol_probability_amplifier_current):
+    a_pred = list(predictions)
+    if start_of_the_cycle_symbol in target_char_indices:
+        place_of_starting_symbol = target_char_indices[start_of_the_cycle_symbol]
+        a_pred[place_of_starting_symbol] = a_pred[place_of_starting_symbol] / stop_symbol_probability_amplifier_current
+    return a_pred
+
+
 # find repetitions
 def repetitions(s):
     r = re.compile(r"(.+?)\1+")
     for match in r.finditer(s):
-        yield (match.group(1), len(match.group(0)) / len(match.group(1)))
+        yield match.group(1), len(match.group(0)) / len(match.group(1))
 
 
 def amplify(s):
@@ -188,13 +191,26 @@ def amplify(s):
     if list_of_rep:
         str_rep = list_of_rep[-1][0]
         if s.endswith(str_rep):
-            # return np.math.exp(np.math.pow(list_of_rep[-1][-1],3)), list_of_rep[-1][0][0]
             return np.math.exp(list_of_rep[-1][-1]), list_of_rep[-1][0][0]
-            # return np.math.pow(list_of_rep[-1][-1],2)
-            # return list_of_rep[-1][-1]
         else:
             return 1, list_of_rep[-1][0][0]
     return 1, " "
 
-# the match.group(0) finds the whole substring that contains 1+ cycles
-# the match.group(1) finds the substring that indicates the cycle
+
+def create_queue(activites, resources):
+    queue = PriorityQueue()
+    # resources_standardized = standardize_list(activites, resources)
+    for activity_index in range(len(activites)):
+        for resource_index in range(len(resources)):
+            queue.put((-(np.log(activites[activity_index]) + np.log(resources[resource_index])),
+                       [activity_index, resource_index]))
+    return queue
+
+
+def standardize_list(list1, list2):
+    len1 = float(len(list1))
+    len2 = float(len(list2))
+    weight = len2 / len1
+    # standardized_list = map(lambda x: weight * x, list2)
+    standardized_list = [weight * x for x in list2]
+    return standardized_list
