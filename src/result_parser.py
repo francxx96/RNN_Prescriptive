@@ -61,14 +61,12 @@ class ResultParser:
         self._log_names = log_names
 
     @staticmethod
-    def _parse_log(filepath, two_predictions=False):
+    def _parse_log(filepath, resource_prediction=False):
         label_1 = 'Damerau-Levenshtein'
         label_2 = 'Damerau-Levenshtein Resource'
+        label_3 = 'Outcome diff.'
 
-        if two_predictions:
-            scores = [[], []]
-        else:
-            scores = [[]]
+        scores = [[], [], []]
 
         with open(filepath, 'r') as f:
             csv_reader = csv.reader(f, delimiter=',', quotechar='|')
@@ -79,21 +77,23 @@ class ResultParser:
                     score_1 = float(row[csv_headers.index(label_1)])
                     scores[0].append(score_1)
 
-                    if two_predictions:
-                        score_2 = float(row[csv_headers.index(label_2)])
-                        scores[1].append(score_2)
+                    score_2 = float(row[csv_headers.index(label_2)]) if resource_prediction else 0.0
+                    scores[1].append(score_2)
+
+                    score_3 = float(row[csv_headers.index(label_3)])
+                    scores[2].append(score_3)
 
         scores = np.mean(np.array(scores), -1)
         return scores
 
     def _populate_table(self, table, scores, log_name, metric, model_type):
         row = self._log_names.index(log_name)
-        column = ResultParser._metrics.index(metric) * len(self._model_types) * 2 \
-                 + (self._model_types.index(model_type) * len(self._model_types))
+        column = self._metrics.index(metric) * (len(self._model_types)+1) * 2 \
+                 + (self._model_types.index(model_type) * (len(self._model_types)+1))
 
         table[row, column] = scores[0]
-        if scores.shape[0] == 2:
-            table[row, column + 1] = scores[1]
+        table[row, column + 1] = scores[1]
+        table[row, column + 2] = scores[2]
 
     @staticmethod
     def _print_latex_table_header():
@@ -104,22 +104,24 @@ class ResultParser:
 
         print('\\begin{table}[!hbt]')
         print('\\centering')
-        print('\\begin{tabular}{|l||c|c|c|c||c|c|c|c||}')
+        print('\\begin{tabular}{|l||c|c|c|c|c|c||c|c|c|c|c|c||}')
         print('\\hline')
         print('\\textit{KB $\\rightarrow$} & '
-              '\\multicolumn{4}{c||}{\\textbf{baseline1}} & '
-              '\\multicolumn{4}{c||}{\\textbf{baseline2}} \\\\')
+              '\\multicolumn{6}{c||}{\\textbf{baseline1}} & '
+              '\\multicolumn{6}{c||}{\\textbf{baseline2}} \\\\')
         print('\\hline')
         print('\\textit{Encoding $\\rightarrow$} & '
-              '\\multicolumn{2}{c|}{\\textbf{CF}} & '
-              '\\multicolumn{2}{c||}{\\textbf{CF+R}} & '
-              '\\multicolumn{2}{c|}{\\textbf{CF}} & '
-              '\\multicolumn{2}{c||}{\\textbf{CF+R}} \\\\')
+              '\\multicolumn{3}{c|}{\\textbf{CF}} & '
+              '\\multicolumn{3}{c||}{\\textbf{CF+R}} & '
+              '\\multicolumn{3}{c|}{\\textbf{CF}} & '
+              '\\multicolumn{3}{c||}{\\textbf{CF+R}} \\\\')
         print('\\hline')
         print('\\textit{Predicand $\\rightarrow$} & '
-              '\\textbf{CF} & \\textbf{R} & \\textbf{CF} & '
-              '\\textbf{R} & \\textbf{CF} & \\textbf{R} & '
-              '\\textbf{CF} & \\textbf{R} \\\\')
+              '\\textbf{CF} & \\textbf{R} & \\textbf{O} & '
+              '\\textbf{CF} & \\textbf{R} & \\textbf{O} & '
+              '\\textbf{CF} & \\textbf{R} & \\textbf{O} & '
+              '\\textbf{CF} & \\textbf{R} & \\textbf{O} '
+              '\\\\')
         print('\\hline\\hline')
 
     @staticmethod
@@ -201,13 +203,13 @@ class ResultParser:
             return self._reference_table[sorted(self._all_log_names.index(i) for i in self._log_names)]
 
         elif folderpath == 'zeros':
-            return np.zeros((len(self._log_names), len(self._metrics) * len(self._model_types) * 2)), \
-                   np.zeros((len(self._log_names), len(self._metrics) * len(self._model_types) * 2))
+            return np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2)), \
+                   np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2))
 
         else:
             table_folds = []
             for fold in range(folds):
-                fold_table = np.zeros((len(self._log_names), len(self._metrics) * len(self._model_types) * 2))
+                fold_table = np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2))
 
                 for log_name in self._log_names:
                     for metric in self._metrics:
@@ -232,7 +234,7 @@ class ResultParser:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logs', default='Data-flow log', help='input logs')
+    parser.add_argument('--logs', default='sepsis_cases_1', help='input logs')
     parser.add_argument('--target_model', default='old_model', help='target model name')
     parser.add_argument('--reference_model', default='zeros', help='reference model name')
     parser.add_argument('--table_caption', default='Old model, PN Checker', help='final latex caption')
