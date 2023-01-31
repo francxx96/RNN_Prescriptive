@@ -102,7 +102,7 @@ log_settings = {
 
     'sepsis_cases_1': {
         'formula': "",
-        'prefix_size_pred_from': 3,
-        'prefix_size_pred_to': 5
+        'prefix_size_pred_from': 10,
+        'prefix_size_pred_to': 12
     },
 }
