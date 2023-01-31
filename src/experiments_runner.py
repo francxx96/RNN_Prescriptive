@@ -60,7 +60,7 @@ class ExperimentRunner:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log', default=['sepsis_cases_1.xes'], help='input log')
+    parser.add_argument('--log', default='sepsis_cases_1.xes', help='input log')
     parser.add_argument('--use_old_model', default=True, action='store_true', help='use old model')
     parser.add_argument('--port', type=int, default=25333, help='communication port (python port = port + 1)')
 

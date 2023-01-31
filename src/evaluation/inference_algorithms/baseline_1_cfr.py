@@ -81,7 +81,7 @@ def run_experiments(log_name, models_folder, fold):
                     y_group = y[1][0]
                     y_o = y[2][0][0]
 
-                    prediction = get_symbol(y_char)  # undo one-hot encoding
+                    prediction = get_symbol(y_char, target_indices_char)  # undo one-hot encoding
                     prediction_group = get_group_symbol(y_group, target_indices_char_group)  # undo one-hot encoding
 
                     if prediction == '!':

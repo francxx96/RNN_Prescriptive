@@ -62,8 +62,8 @@ def run_experiments(log_name, models_folder, fold):
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         # headers for the new file
         spamwriter.writerow(["Prefix length", "Ground truth", "Predicted", "Damerau-Levenshtein", "Jaccard",
-                             "Ground truth outcome", "Predicted outcome", "Outcome diff.",
                              "Ground Truth Group", "Predicted Group", "Damerau-Levenshtein Resource",
+                             "Ground truth outcome", "Predicted outcome", "Outcome diff.",
                              "compliantness"])
 
         curr_time = time.time()
@@ -149,7 +149,7 @@ def run_experiments(log_name, models_folder, fold):
                                                               start_of_the_cycle_symbol,
                                                               stop_symbol_probability_amplifier_current, j)
 
-                            temp_prediction_group = get_group_symbol(y_group)
+                            temp_prediction_group = get_group_symbol(y_group, target_indices_char_group)
 
                             # end of case was just predicted, therefore, stop predicting further into the future
                             if temp_prediction == '!':
