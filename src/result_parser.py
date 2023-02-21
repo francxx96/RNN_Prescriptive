@@ -1,12 +1,10 @@
 import argparse
 import csv
-
 import numpy as np
 from enum import Enum
 from matplotlib import pyplot as plt
 
-import shared_variables
-from shared_variables import folds
+from src.commons import shared_variables as shared
 
 
 class ResultParser:
@@ -17,6 +15,7 @@ class ResultParser:
     class ColumnTypes(Enum):
         CF = 0
         R = 1
+        O = 2
 
     _all_log_names = [
         "Data-flow log"
@@ -53,8 +52,9 @@ class ResultParser:
     # </editor-fold>
 
     _column_colors = {
-        ColumnTypes.CF: 'C0C0C0',
-        ColumnTypes.R: 'E8E8E8'
+        ColumnTypes.CF: 'E0E0E0',
+        ColumnTypes.R: 'C0C0C0',
+        ColumnTypes.O: 'A0A0A0'
     }
 
     def __init__(self, log_names):
@@ -150,17 +150,20 @@ class ResultParser:
             print('%.0f %.0f' % (100*score, 100*std), end=' '),
 
     def _print_latex_table(self, populated_table, std_table, highlight_type, table_caption, table_label):
-        cf_maximums = np.max(populated_table[:, 0::2], 1)
-        r_maximums = np.max(populated_table[:, 1::2], 1)
+        cf_maximums = np.max(populated_table[:, 0::3], 1)
+        r_maximums = np.max(populated_table[:, 1::3], 1)
+        o_maximums = np.max(populated_table[:, 2::3], 1)
 
         self._print_latex_table_header()
         for i, log_name in enumerate(self._log_names):
             print(log_name.replace('_', '\_') + ' & ', end=' '),
             for j, score in enumerate(populated_table[i]):
-                if j % 2 == 0:
+                if j % 3 == 0:
                     self._print_score(score, std_table[i][j], cf_maximums[i], highlight_type, ResultParser.ColumnTypes.CF)
-                else:
+                elif j % 3 == 1:
                     self._print_score(score, std_table[i][j], r_maximums[i], highlight_type, ResultParser.ColumnTypes.R)
+                else:
+                    self._print_score(score, std_table[i][j], o_maximums[i], highlight_type, ResultParser.ColumnTypes.O)
 
                 if j != populated_table.shape[1] - 1:
                     print('&', end=' '),
@@ -208,7 +211,7 @@ class ResultParser:
 
         else:
             table_folds = []
-            for fold in range(folds):
+            for fold in range(shared.folds):
                 fold_table = np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2))
 
                 for log_name in self._log_names:
@@ -234,7 +237,7 @@ class ResultParser:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logs', default='sepsis_cases_1', help='input logs')
+    parser.add_argument('--logs', default='Synthetic log labelled', help='input logs')
     parser.add_argument('--target_model', default='old_model', help='target model name')
     parser.add_argument('--reference_model', default='zeros', help='reference model name')
     parser.add_argument('--table_caption', default='Old model, PN Checker', help='final latex caption')
@@ -244,9 +247,9 @@ if __name__ == "__main__":
     result_parser = ResultParser(args.logs.replace('[', '').replace(']', '').split(','))
 
     models_dict = {
-        'old_model': shared_variables.outputs_folder / 'old_model',
-        'new_model': shared_variables.outputs_folder / 'new_model',
-        'new_model_2': shared_variables.outputs_folder / 'new_model_2',
+        'old_model': shared.output_folder / 'old_model',
+        'new_model': shared.output_folder / 'new_model',
+        'new_model_2': shared.output_folder / 'new_model_2',
         'reference': 'reference',
         'zeros': 'zeros'
     }

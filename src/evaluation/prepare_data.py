@@ -1,25 +1,23 @@
 """
 This script prepares data in the format for the testing
 algorithms to run
-
 The script is expanded to the resource attribute
 """
 
 from __future__ import division
-
 import copy
 import csv
 import re
 from queue import PriorityQueue
-
 import numpy as np
+import pm4py
+from pm4py.objects.log.obj import Trace, Event, EventLog
 
-import shared_variables
-from evaluation.server_replayer import get_pn_fitness
+from src.commons import utils, shared_variables as shared
 
 
 def prepare_testing_data(eventlog):
-    csvfile = open(shared_variables.data_folder / (eventlog + '.csv'), 'r')
+    csvfile = open(shared.log_folder / (eventlog + '.csv'), 'r')
     spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
     next(spamreader, None)  # skip the headers
 
@@ -47,8 +45,8 @@ def prepare_testing_data(eventlog):
             line = ''
             line_group = ''
             numlines += 1
-        line += shared_variables.get_unicode_from_int(row[1])
-        line_group += shared_variables.get_unicode_from_int(row[3])
+        line += utils.get_unicode_from_int(row[1])
+        line_group += utils.get_unicode_from_int(row[3])
         first_line = False
 
     # add last case
@@ -113,6 +111,24 @@ def select_petrinet_verified_traces(lines, lines_id, lines_group, lines_o, path_
             lines_o_v.append(outcomes)
 
     return lines_v, lines_id_v, lines_group_v, lines_o_v
+
+
+def get_pn_fitness(pn_file: str, trace_id: str, activities, groups=None):
+    log_xes = EventLog()
+    trace_xes = Trace()
+    trace_xes.attributes["concept:name"] = trace_id
+    for i in range(len(activities)):
+        event = Event()
+        event["concept:name"] = shared.act_encoding[utils.get_int_from_unicode(activities[i])]
+        if groups is not None:
+            event["org:resource"] = shared.res_encoding[utils.get_int_from_unicode(groups[i])]
+        trace_xes.append(event)
+
+    log_xes.append(trace_xes)
+
+    net, initial_marking, final_marking = pm4py.read_pnml(pn_file, auto_guess_final_marking=True)
+    alignment = pm4py.conformance_diagnostics_alignments(log_xes, net, initial_marking, final_marking)[0]
+    return alignment['fitness']
 
 
 # define helper functions

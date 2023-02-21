@@ -1,32 +1,26 @@
 """
 This script takes as input the workflow, timestamps and an event attribute "resource"
 It makes predictions on the workflow & timestamps and the event attribute "resource"
-
 this script trains an LSTM model on one of the data files in the data folder of
 this repository. the input file can be changed to another file from the data folder
 by changing its name in line 46.
-
 it is recommended to run this script on GPU, as recurrent networks are quite
 computationally intensive.
-
 Author: Niek Tax
 """
 
 from __future__ import print_function, division
-
 import copy
 import csv
 import os
-
 import numpy as np
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.layers import LSTM, Dense, Input, Dropout, BatchNormalization, LeakyReLU
 from keras.models import Model
 from keras.optimizers import Nadam, Adam
 
-import shared_variables
-from shared_variables import get_unicode_from_int, epochs, folds, validation_split
-from training.train_common import create_checkpoints_path, plot_loss
+from src.commons import utils, shared_variables as shared
+from src.training.train_common import create_checkpoints_path, plot_loss
 
 
 class TrainCFR:
@@ -90,8 +84,8 @@ class TrainCFR:
         early_stopping = EarlyStopping(monitor='val_loss', patience=7)
 
         history = model.fit(X, {'act_output': y_a, 'outcome_output': y_o, 'group_output': y_g},
-                            validation_split=validation_split, verbose=2, batch_size=32,
-                            callbacks=[early_stopping, model_checkpoint, lr_reducer], epochs=epochs)
+                            validation_split=shared.validation_split, verbose=2, batch_size=32,
+                            callbacks=[early_stopping, model_checkpoint, lr_reducer], epochs=shared.epochs)
         plot_loss(history, os.path.dirname(checkpoint_name))
 
     @staticmethod
@@ -107,7 +101,7 @@ class TrainCFR:
         first_line = True
         numlines = 0
 
-        path = shared_variables.data_folder / (log_name + '.csv')
+        path = shared.log_folder / (log_name + '.csv')
         print(path)
         csvfile = open(str(path), 'r')
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -123,8 +117,8 @@ class TrainCFR:
                 line = ''
                 line_group = ''
                 numlines += 1
-            line += get_unicode_from_int(row[1])
-            line_group += get_unicode_from_int(row[3])
+            line += utils.get_unicode_from_int(row[1])
+            line_group += utils.get_unicode_from_int(row[3])
             outcome = row[4]
             first_line = False
 
@@ -196,8 +190,8 @@ class TrainCFR:
                 line = ''
                 line_group = ''
                 numlines += 1
-            line += get_unicode_from_int(row[1])
-            line_group += get_unicode_from_int(row[3])
+            line += utils.get_unicode_from_int(row[1])
+            line_group += utils.get_unicode_from_int(row[3])
             outcome = row[4]
             first_line = False
 
@@ -269,7 +263,7 @@ class TrainCFR:
                     y_g[i, target_char_indices_group[g]] = softness / (len(target_chars_group) - 1)
             y_o[i] = sentences_o[i]
 
-        for fold in range(folds):
+        for fold in range(shared.folds):
             model = TrainCFR._build_model(maxlen, num_features, target_chars, target_chars_group, use_old_model)
             checkpoint_name = create_checkpoints_path(log_name, models_folder, fold, 'CFR')
             TrainCFR._train_model(model, checkpoint_name, X, y_a, y_o, y_g)

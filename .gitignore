@@ -1,6 +1,6 @@
 # Project useless files
 .DS_Store
-output_files/
+data/output_files/
 declare_models-xml/
 .idea/
 *.csv

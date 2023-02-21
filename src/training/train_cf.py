@@ -2,30 +2,23 @@
 this script trains an LSTM model on one of the data files in the data folder of
 this repository. the input file can be changed to another file from the data folder
 by changing its name in line 46.
-
 it is recommended to run this script on GPU, as recurrent networks are quite
 computationally intensive.
-
 Author: Niek Tax
 """
 
 from __future__ import print_function, division
-
 import copy
 import csv
 import os
-from datetime import datetime
-
 import numpy as np
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.layers import LSTM, Dense, Input, BatchNormalization, LeakyReLU, Dropout
 from keras.models import Model
 from keras.optimizers import Nadam, Adam
 
-
-import shared_variables
-from shared_variables import get_unicode_from_int, folds, epochs, validation_split
-from training.train_common import create_checkpoints_path, plot_loss
+from src.commons import utils, shared_variables as shared
+from src.training.train_common import create_checkpoints_path, plot_loss
 
 
 class TrainCF:
@@ -82,46 +75,10 @@ class TrainCF:
         early_stopping = EarlyStopping(monitor='val_loss', patience=7)
         lr_reducer = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10, verbose=0, mode='auto',
                                        min_delta=0.0001, cooldown=0, min_lr=0)
-        history = model.fit(X, {'act_output': y_a, 'outcome_output': y_o}, validation_split=validation_split, batch_size=32,
-                            verbose=2, callbacks=[early_stopping, model_checkpoint, lr_reducer], epochs=epochs)
+        history = model.fit(X, {'act_output': y_a, 'outcome_output': y_o}, validation_split=shared.validation_split,
+                            batch_size=32, verbose=2, callbacks=[early_stopping, model_checkpoint, lr_reducer],
+                            epochs=shared.epochs)
         plot_loss(history, os.path.dirname(checkpoint_name))
-
-    @staticmethod
-    def _load_dataset(log_name):
-        dataset = []
-        current_case = []
-        current_case_id = None
-        current_case_start_time = None
-        last_event_time = None
-
-        csvfile = open(str(shared_variables.data_folder / log_name), 'r')
-        csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        next(csv_reader, None)
-
-        for row in csv_reader:  # CaseID, ActivityID, Timestamp, ResourceID
-            case_id = row[0]
-            activity_id = int(row[1])
-            timestamp = datetime.strptime(row[2], '%Y-%m-%d %H:%M:%S')
-            resource_id = int(row[3])
-
-            if case_id != current_case_id:
-                if len(current_case) > 0:
-                    dataset.append(current_case)
-                current_case = []
-                current_case_id = case_id
-                current_case_start_time = timestamp
-                last_event_time = timestamp
-
-            time_since_case_start = int((timestamp - current_case_start_time).total_seconds())
-            time_since_last_event = int((timestamp - last_event_time).total_seconds())
-            time_since_midnight = int(
-                (timestamp - timestamp.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds())
-            day_of_week = timestamp.weekday()
-
-            current_case.append(
-                (activity_id, time_since_case_start, time_since_last_event, time_since_midnight, day_of_week))
-
-        print(len(dataset))
 
     @staticmethod
     def train(log_name, models_folder, use_old_model):
@@ -135,7 +92,7 @@ class TrainCF:
         first_line = True
         num_lines = 0
 
-        path = shared_variables.data_folder / (log_name + '.csv')
+        path = shared.log_folder / (log_name + '.csv')
         print(path)
         csvfile = open(str(path), 'r')
         csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -149,7 +106,7 @@ class TrainCF:
                     outcomes.append(outcome)
                 line = ''
                 num_lines += 1
-            line += get_unicode_from_int(row[1])
+            line += utils.get_unicode_from_int(row[1])
             outcome = row[4]
             first_line = False
 
@@ -203,7 +160,7 @@ class TrainCF:
                     outcomes.append(outcome)
                 line = ''
                 num_lines += 1
-            line += get_unicode_from_int(row[1])
+            line += utils.get_unicode_from_int(row[1])
             outcome = row[4]
             first_line = False
 
@@ -257,7 +214,7 @@ class TrainCF:
                     y_a[i, target_char_indices[c]] = softness / (len(target_chars) - 1)
             y_o[i] = sentences_o[i]
 
-        for fold in range(folds):
+        for fold in range(shared.folds):
             # model = build_model(max_length, num_features, max_activity_id)
             model = TrainCF._build_model(maxlen, num_features, target_chars, use_old_model)
             checkpoint_name = create_checkpoints_path(log_name, models_folder, fold, 'CF')
