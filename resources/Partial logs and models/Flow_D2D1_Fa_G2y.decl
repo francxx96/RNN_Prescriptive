@@ -1,0 +1,38 @@
+activity A
+bind A: org:group
+activity B
+bind B: org:group
+activity C
+bind C: org:group
+activity D1
+bind D1: org:group
+activity D2
+bind D2: org:group
+activity D3
+bind D3: org:group
+activity E
+bind E: org:group
+activity F
+bind F: org:group
+activity G1
+bind G1: org:group
+activity G2
+bind G2: org:group
+activity G3
+bind G3: org:group
+activity H
+bind H: org:group
+activity I
+bind I: org:group
+org:group: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, W, X, Y, Z
+Init[A] | |
+Chain Response[A, B] | | |
+Chain Response[B, C] | | |
+Chain Response[C, D2] | | |
+Chain Response[D2, D1] | | |
+Chain Response[D1, E] | | |
+Chain Response[E, F] | |T.org:group is A |
+Chain Response[F, G2] |A.org:group is A |T.org:group is Y |
+Chain Response[G2, H] |A.org:group is Y | |
+Chain Response[H, I] | | |
+End[I] | |
