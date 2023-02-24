@@ -75,9 +75,8 @@ def run_experiments(log_name, models_folder, fold):
 
         for prefix_size in range(prefix_size_pred_from, prefix_size_pred_to):
             print("prefix size: " + str(prefix_size))
-            counter = 0
-            for line, line_id, line_group, line_outcome in zip(lines_s, lines_id_s, lines_group_s, lines_o_s):
 
+            for line, line_id, line_group, line_outcome in zip(lines_s, lines_id_s, lines_group_s, lines_o_s):
                 if len(line) < prefix_size:
                     continue  # make no prediction for this case, since this case has ended already
 
@@ -174,8 +173,6 @@ def run_experiments(log_name, models_folder, fold):
 
                     queue_next_steps = queue_next_steps_future
                     queue_next_steps_future = PriorityQueue()
-
-                counter += 1
 
                 if current_prediction_premis is None:
                     print("Cannot find any trace that is compliant with formula given current beam size")
