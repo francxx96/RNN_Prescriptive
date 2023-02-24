@@ -9,9 +9,10 @@ import copy
 import csv
 import re
 from queue import PriorityQueue
+from datetime import datetime
 import numpy as np
 import pm4py
-from pm4py.objects.log.obj import Trace, Event, EventLog
+import pandas as pd
 
 from src.commons import utils, shared_variables as shared
 
@@ -103,31 +104,38 @@ def select_petrinet_verified_traces(lines, lines_id, lines_group, lines_o, path_
     lines_group_v = []
     lines_o_v = []
 
-    for line, line_id, line_group, outcomes in zip(lines, lines_id, lines_group, lines_o):
+    for line, line_id, line_group, outcome in zip(lines, lines_id, lines_group, lines_o):
         if get_pn_fitness(path_to_pn_model_file, line_id, line, line_group) >= 1:
             lines_v.append(line)
             lines_id_v.append(line_id)
             lines_group_v.append(line_group)
-            lines_o_v.append(outcomes)
+            lines_o_v.append(outcome)
 
     return lines_v, lines_id_v, lines_group_v, lines_o_v
 
 
 def get_pn_fitness(pn_file: str, trace_id: str, activities, groups=None):
-    log_xes = EventLog()
-    trace_xes = Trace()
-    trace_xes.attributes["concept:name"] = trace_id
+    if groups is not None:
+        log = pd.DataFrame(columns=['case:concept:name', 'time:timestamp', 'concept:name', 'org:group'])
+    else:
+        log = pd.DataFrame(columns=['case:concept:name', 'time:timestamp', 'concept:name'])
+
     for i in range(len(activities)):
-        event = Event()
-        event["concept:name"] = shared.act_encoding[utils.get_int_from_unicode(activities[i])]
+        act_name = shared.act_encoding[utils.get_int_from_unicode(activities[i])]
+        # Adding time just for avoiding exception (the log dataframe needs it mandatory)
+        row = [trace_id, datetime.utcnow().isoformat(), act_name]
+
         if groups is not None:
-            event["org:resource"] = shared.res_encoding[utils.get_int_from_unicode(groups[i])]
-        trace_xes.append(event)
+            res_name = shared.res_encoding[utils.get_int_from_unicode(groups[i])]
+            row.append(res_name)
 
-    log_xes.append(trace_xes)
+        # Appending event to the dataframe
+        log.loc[len(log)] = row
 
-    net, initial_marking, final_marking = pm4py.read_pnml(pn_file, auto_guess_final_marking=True)
-    alignment = pm4py.conformance_diagnostics_alignments(log_xes, net, initial_marking, final_marking)[0]
+    log['time:timestamp'] = pd.to_datetime(log['time:timestamp'])
+
+    net, initial_marking, final_marking = pm4py.read_pnml(pn_file)
+    alignment = pm4py.conformance_diagnostics_alignments(log, net, initial_marking, final_marking)[0]
     return alignment['fitness']
 
 
