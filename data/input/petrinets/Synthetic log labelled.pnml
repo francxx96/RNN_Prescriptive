@@ -311,5 +311,12 @@
   <arc id="e-284C-55954-48" source="p-284C-558EF-20" target="t-284C-558DE-8">
   </arc>
  </page>
+ <finalmarkings>
+  <marking>
+    <place idref="p-284C-5593D-23">
+      <text>1</text>
+    </place>
+  </marking>
+ </finalmarkings>
  </net>
 </pnml>
