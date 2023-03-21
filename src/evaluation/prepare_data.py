@@ -97,7 +97,7 @@ def prepare_testing_data(eventlog):
 
 
 # selects traces verified by a petri net model
-def select_petrinet_verified_traces(lines, lines_id, lines_group, lines_o, path_to_pn_model_file):
+def select_petrinet_verified_traces(log_name, lines, lines_id, lines_group, lines_o, path_to_pn_model_file):
     # select only lines with formula verified
     lines_v = []
     lines_id_v = []
@@ -105,7 +105,7 @@ def select_petrinet_verified_traces(lines, lines_id, lines_group, lines_o, path_
     lines_o_v = []
 
     for line, line_id, line_group, outcome in zip(lines, lines_id, lines_group, lines_o):
-        if get_pn_fitness(path_to_pn_model_file, line_id, line, line_group) >= 1:
+        if get_pn_fitness(path_to_pn_model_file, line_id, line, line_group) >= shared.log_settings[log_name]['th_compliance']:
             lines_v.append(line)
             lines_id_v.append(line_id)
             lines_group_v.append(line_group)

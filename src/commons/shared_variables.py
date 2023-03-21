@@ -34,7 +34,8 @@ log_settings = {
         'act_name_key': 'concept:name',
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
-        'prefix_size_pred_range': [7, 8]
+        'prefix_size_pred_range': [7, 8],
+        'th_compliance': 1.0
     },
 
     'sepsis_cases_1': {
@@ -45,7 +46,8 @@ log_settings = {
         'act_name_key': 'Activity',
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
-        'prefix_size_pred_range': [10, 12]
+        'prefix_size_pred_range': [10, 12],
+        'th_compliance': 0.77   # 0.62 for complete petrinet, 0.77 for reduced petrinet
     },
 
     'sepsis_cases_2': {
@@ -56,7 +58,8 @@ log_settings = {
         'act_name_key': 'Activity',
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
-        'prefix_size_pred_range': [10, 12]
+        'prefix_size_pred_range': [10, 12],
+        'th_compliance': 0.55
     },
 
     'sepsis_cases_4': {
@@ -67,6 +70,7 @@ log_settings = {
         'act_name_key': 'Activity',
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
-        'prefix_size_pred_range': [10, 12]
+        'prefix_size_pred_range': [10, 12],
+        'th_compliance': 0.77
     },
 }

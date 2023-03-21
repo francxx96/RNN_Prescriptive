@@ -13,12 +13,13 @@ import csv
 import os
 import numpy as np
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from keras.layers import LSTM, Dense, Input, BatchNormalization, LeakyReLU, Dropout
+from keras.layers import LSTM, Dense, Input, BatchNormalization, Dropout, GlobalMaxPooling1D
 from keras.models import Model
 from keras.optimizers import Nadam, Adam
+from keras_nlp.layers import TransformerEncoder
 
 from src.commons import utils, shared_variables as shared
-from src.training.train_common import create_checkpoints_path, plot_loss
+from src.training.train_common import create_checkpoints_path, plot_loss, CustomTransformer
 
 
 class TrainCF:
@@ -26,14 +27,13 @@ class TrainCF:
         pass
 
     @staticmethod
-    def _build_model(max_len, num_features, target_chars, use_old_model):
+    def _build_model(max_len, num_features, target_chars, models_folder):
         print('Build model...')
 
         main_input = Input(shape=(max_len, num_features), name='main_input')
-        processed = main_input
 
-        if use_old_model:
-            processed = LSTM(50, return_sequences=True, dropout=0.2)(processed)
+        if models_folder == "NN":
+            processed = LSTM(50, return_sequences=True, dropout=0.2)(main_input)
             processed = BatchNormalization()(processed)
 
             activity_output = LSTM(50, return_sequences=False, dropout=0.2)(processed)
@@ -45,24 +45,40 @@ class TrainCF:
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(activity_output)
             outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(outcome_output)
 
-            opt = Nadam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004, clipvalue=3)
-        else:
-            processed = Dense(32//2)(processed)
-            processed = BatchNormalization()(processed)
-            processed = LeakyReLU()(processed)
-            processed = Dropout(0.5)(processed)
+            opt = Nadam(learning_rate=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004,
+                        clipvalue=3)
 
-            processed = LSTM(64//2, return_sequences=False, recurrent_dropout=0.5)(processed)
+        elif models_folder == "custom_trans":
 
-            processed = Dense(32//2)(processed)
-            processed = BatchNormalization()(processed)
-            processed = LeakyReLU()(processed)
+            embed_dim = 256
+            embeddings1 = Dense(embed_dim, activation="ReLU")(main_input)
+            embeddings2 = Dense(embed_dim, activation="ReLU")(embeddings1)
+            embeddings3 = Dense(embed_dim, activation="ReLU")(embeddings2)
+
+            processed = CustomTransformer(embed_dim=embed_dim)(embeddings3)
+
+            processed = GlobalMaxPooling1D()(processed)
             processed = Dropout(0.5)(processed)
 
             activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(processed)
             outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(processed)
 
             opt = Adam()
+
+        elif models_folder == "keras_trans":
+
+            processed = TransformerEncoder(intermediate_dim=64, num_heads=8)(main_input)
+
+            processed = GlobalMaxPooling1D()(processed)
+            processed = Dropout(0.5)(processed)
+
+            activity_output = Dense(len(target_chars), activation='softmax', name='act_output')(processed)
+            outcome_output = Dense(1, activation='sigmoid', name='outcome_output')(processed)
+
+            opt = Adam()
+
+        else:
+            raise RuntimeError(f'The "{models_folder}" network is not defined!')
 
         model = Model(main_input, [activity_output, outcome_output])
         model.compile(loss={'act_output': 'categorical_crossentropy', 'outcome_output': 'binary_crossentropy'},
@@ -81,7 +97,7 @@ class TrainCF:
         plot_loss(history, os.path.dirname(checkpoint_name))
 
     @staticmethod
-    def train(log_name, models_folder, use_old_model):
+    def train(log_name, models_folder):
         lines = []      # list of all the activity sequences
         outcomes = []   # outcome of each activity sequence (i.e. each case)
 
@@ -216,6 +232,6 @@ class TrainCF:
 
         for fold in range(shared.folds):
             # model = build_model(max_length, num_features, max_activity_id)
-            model = TrainCF._build_model(maxlen, num_features, target_chars, use_old_model)
+            model = TrainCF._build_model(maxlen, num_features, target_chars, models_folder)
             checkpoint_name = create_checkpoints_path(log_name, models_folder, fold, 'CF')
             TrainCF._train_model(model, checkpoint_name, X, y_a, y_o)

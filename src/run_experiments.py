@@ -9,25 +9,23 @@ from training.train_cfr import TrainCFR
 
 class ExperimentRunner:
     _log_names = [
-        'Data-flow log.xes'
+        #'Synthetic log labelled.xes',
+        'sepsis_cases_1.xes',
+        #'sepsis_cases_2.xes',
+        #'sepsis_cases_4.xes'
     ]
 
-    def __init__(self, use_old_model, port, python_port, train, evaluate):
-        self._use_old_model = use_old_model
+    def __init__(self, model, port, python_port, train, evaluate):
+        self._model = model
         self._port = port
         self._python_port = python_port
         self._train = train
         self._evaluate = evaluate
 
-        if use_old_model:
-            self._models_folder = 'old_model'
-        else:
-            self._models_folder = 'new_model'
-
         self._evaluator = Evaluator()
 
         print(args.port, python_port)
-        print(self._models_folder)
+        print(self._model)
 
     def _run_single_experiment(self, log_name):
         xes_log_path = shared.log_folder / log_name
@@ -38,10 +36,10 @@ class ExperimentRunner:
         print('evaluate:', self._evaluate)
 
         if self._train:
-            TrainCF.train(log_name, self._models_folder, self._use_old_model)
-            TrainCFR.train(log_name, self._models_folder, self._use_old_model)
+            TrainCF.train(log_name, self._model)
+            TrainCFR.train(log_name, self._model)
         if self._evaluate:
-            self._evaluator.evaluate_all(log_name, self._models_folder)
+            self._evaluator.evaluate_all(log_name, self._model)
 
     def run_experiments(self, input_log_name):
         config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=4, inter_op_parallelism_threads=4,
@@ -58,8 +56,8 @@ class ExperimentRunner:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log', default='Synthetic log labelled.xes', help='input log')
-    parser.add_argument('--use_old_model', default=True, action='store_true', help='use old model')
+    parser.add_argument('--log', default=None, help='input log')
+    parser.add_argument('--model', default="keras_trans", help='choose among ["NN", "custom_trans", "keras_trans"]')
     parser.add_argument('--port', type=int, default=25333, help='communication port (python port = port + 1)')
 
     group = parser.add_mutually_exclusive_group()
@@ -73,7 +71,7 @@ if __name__ == '__main__':
         args.train = True
         args.evaluate = True
 
-    ExperimentRunner(use_old_model=args.use_old_model,
+    ExperimentRunner(model=args.model,
                      port=args.port,
                      python_port=args.port + 1,
                      train=args.train,
