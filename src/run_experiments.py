@@ -9,7 +9,7 @@ from training.train_cfr import TrainCFR
 
 class ExperimentRunner:
     _log_names = [
-        #'Synthetic log labelled.xes',
+        'Synthetic log labelled.xes',
         'sepsis_cases_1.xes',
         #'sepsis_cases_2.xes',
         #'sepsis_cases_4.xes'

@@ -170,29 +170,47 @@ def encode_with_group(sentence, sentence_group, maxlen, chars, chars_group, char
     return x
 
 
-# modify to be able to get second best prediction
-def get_symbol(predictions, target_indices_char, ith_best=0):
-    i = np.argsort(predictions)[len(predictions) - ith_best - 1]
-    return target_indices_char[i]
+# find repetitions
+def repetitions(s):
+    r = re.compile(r"(.+?)\1+")
+    for match in r.finditer(s):
+        yield match.group(1), len(match.group(0)) / len(match.group(1))
 
 
-# modify to be able to get second best prediction
-def get_group_symbol(predictions, target_indices_char_group, vth_best=0):
-    v = np.argsort(predictions)[len(predictions) - vth_best - 1]
-    return target_indices_char_group[v]
+def reduce_loop(s):
+    list_of_rep = list(repetitions(s))
+    loop_start = None
+    reduction_factor = 1
+
+    if list_of_rep:
+        loop = list_of_rep[-1][0]
+        loop_length = list_of_rep[-1][-1]
+        loop_start = loop[0]
+
+        if s.endswith(loop):
+            reduction_factor = 1 / np.math.exp(loop_length)
+
+    return loop_start, reduction_factor
 
 
-# modify to be able to get second-best prediction
-def get_symbol_ampl(predictions, target_indices_char, target_char_indices, start_of_the_cycle_symbol,
-                    stop_symbol_probability_amplifier_current, ith_best=0):
-    a_pred = list(predictions)
-    if start_of_the_cycle_symbol in target_char_indices:
-        place_of_starting_symbol = target_char_indices[start_of_the_cycle_symbol]
-        a_pred[place_of_starting_symbol] = a_pred[place_of_starting_symbol] / stop_symbol_probability_amplifier_current
-    i = np.argsort(a_pred)[len(a_pred) - ith_best - 1]
-    return target_indices_char[i]
+def get_symbol(prefix, predictions, target_indices_char, target_char_indices, reduce_loop_prob=True, ith_best=0):
+    if reduce_loop_prob:
+        symbol_where_loop_starts, reduction_factor = reduce_loop(prefix)
+        # Reducing probability of the first symbol of detected loop (if any) for preventing endless traces
+        if symbol_where_loop_starts:
+            symbol_idx = target_char_indices[symbol_where_loop_starts]
+            predictions[symbol_idx] *= reduction_factor
+
+    pred_idx = np.argsort(predictions)[len(predictions) - ith_best - 1]
+    return target_indices_char[pred_idx]
 
 
+def get_group_symbol(predictions, target_indices_char_group, ith_best=0):
+    group_pred_idx = np.argsort(predictions)[len(predictions) - ith_best - 1]
+    return target_indices_char_group[group_pred_idx]
+
+
+'''
 # modify to be able to get second-best prediction
 def adjust_probabilities(predictions, target_char_indices, start_of_the_cycle_symbol,
                          stop_symbol_probability_amplifier_current):
@@ -201,24 +219,6 @@ def adjust_probabilities(predictions, target_char_indices, start_of_the_cycle_sy
         place_of_starting_symbol = target_char_indices[start_of_the_cycle_symbol]
         a_pred[place_of_starting_symbol] = a_pred[place_of_starting_symbol] / stop_symbol_probability_amplifier_current
     return a_pred
-
-
-# find repetitions
-def repetitions(s):
-    r = re.compile(r"(.+?)\1+")
-    for match in r.finditer(s):
-        yield match.group(1), len(match.group(0)) / len(match.group(1))
-
-
-def amplify(s):
-    list_of_rep = list(repetitions(s))
-    if list_of_rep:
-        str_rep = list_of_rep[-1][0]
-        if s.endswith(str_rep):
-            return np.math.exp(list_of_rep[-1][-1]), list_of_rep[-1][0][0]
-        else:
-            return 1, list_of_rep[-1][0][0]
-    return 1, " "
 
 
 def create_queue(activites, resources):
@@ -238,3 +238,4 @@ def standardize_list(list1, list2):
     # standardized_list = map(lambda x: weight * x, list2)
     standardized_list = [weight * x for x in list2]
     return standardized_list
+'''

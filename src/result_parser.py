@@ -21,8 +21,8 @@ class ResultParser:
         "Data-flow log"
     ]
 
-    _headers = ['B1_CF', 'B1_R', 'B2_CF', 'B2_R']
-    _metrics = ['baseline1', 'baseline2']
+    _headers = ['BL_CF', 'BL_R', 'BS_CF', 'BS_R']
+    _metrics = ['baseline', 'beamsearch']
 
     _model_types = ['CF', 'CFR']
 
@@ -237,7 +237,7 @@ class ResultParser:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logs', default='Synthetic log labelled', help='input logs')
+    parser.add_argument('--logs', default='[Synthetic log labelled,sepsis_cases_1,sepsis_cases_2,sepsis_cases_4]', help='input logs')
     parser.add_argument('--target_model', default='old_model', help='target model name')
     parser.add_argument('--reference_model', default='zeros', help='reference model name')
     parser.add_argument('--table_caption', default='Old model, PN Checker', help='final latex caption')

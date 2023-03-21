@@ -8,7 +8,6 @@ from pathlib import Path
 
 ascii_offset = 161
 beam_size = 3
-fitness_threshold = 1
 
 data_folder = Path.cwd().parents[0] / 'data'
 input_folder = data_folder / 'input'
@@ -35,7 +34,8 @@ log_settings = {
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
         'prefix_size_pred_range': [7, 8],
-        'th_compliance': 1.0
+        'th_compliance': 1.0,
+        'th_evaluation': 1.0 * 0.9
     },
 
     'sepsis_cases_1': {
@@ -47,7 +47,8 @@ log_settings = {
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
         'prefix_size_pred_range': [10, 12],
-        'th_compliance': 0.77   # 0.62 for complete petrinet, 0.77 for reduced petrinet
+        'th_compliance': 0.77,   # 0.62 for complete petrinet, 0.77 for reduced petrinet
+        'th_evaluation': 0.77 * 0.9
     },
 
     'sepsis_cases_2': {
@@ -59,7 +60,8 @@ log_settings = {
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
         'prefix_size_pred_range': [10, 12],
-        'th_compliance': 0.55
+        'th_compliance': 0.55,
+        'th_evaluation': 0.55 * 0.9
     },
 
     'sepsis_cases_4': {
@@ -71,6 +73,7 @@ log_settings = {
         'res_name_key': 'org:group',
         'time_key': 'time:timestamp',
         'prefix_size_pred_range': [10, 12],
-        'th_compliance': 0.77
+        'th_compliance': 0.77,
+        'th_evaluation': 0.77 * 0.9
     },
 }
