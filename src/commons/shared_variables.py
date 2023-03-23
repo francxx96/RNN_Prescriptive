@@ -76,4 +76,17 @@ log_settings = {
         'th_compliance': 0.77,
         'th_evaluation': 0.77 * 0.9
     },
+
+    'Production': {
+        'trace_name_key': 'Case ID',
+        'label_key': 'label',
+        'label_pos_val': 'deviant',
+        'label_neg_val': 'regular',
+        'act_name_key': 'Activity',
+        'res_name_key': 'Resource',
+        'time_key': 'Complete Timestamp',
+        'prefix_size_pred_range': [10, 12],
+        'th_compliance': 0.77,
+        'th_evaluation': 0.77 * 0.9
+    },
 }

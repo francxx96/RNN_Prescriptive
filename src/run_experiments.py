@@ -11,8 +11,9 @@ class ExperimentRunner:
     _log_names = [
         'Synthetic log labelled.xes',
         'sepsis_cases_1.xes',
-        #'sepsis_cases_2.xes',
-        #'sepsis_cases_4.xes'
+        'sepsis_cases_2.xes',
+        'sepsis_cases_4.xes',
+        'Production.xes'
     ]
 
     def __init__(self, model, port, python_port, train, evaluate):
