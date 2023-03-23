@@ -8,7 +8,6 @@ from __future__ import division
 import copy
 import csv
 import re
-from queue import PriorityQueue
 from datetime import datetime
 import numpy as np
 import pm4py
@@ -177,27 +176,29 @@ def repetitions(s):
         yield match.group(1), len(match.group(0)) / len(match.group(1))
 
 
-def reduce_loop(s):
-    list_of_rep = list(repetitions(s))
-    loop_start = None
-    reduction_factor = 1
+def reduce_loop_probability(trace):
+    tmp = dict()
 
-    if list_of_rep:
-        loop = list_of_rep[-1][0]
-        loop_length = list_of_rep[-1][-1]
-        loop_start = loop[0]
+    # num_repetitions = number of consequent repetitions of loop inside trace
+    for loop, num_repetitions in repetitions(trace):
+        if trace.endswith(loop):
+            loop_start_symbol = loop[0]
+            reduction_factor = 1 / np.math.exp(num_repetitions)
 
-        if s.endswith(loop):
-            reduction_factor = 1 / np.math.exp(loop_length)
+            if loop_start_symbol in tmp:
+                if reduction_factor > tmp[loop_start_symbol]:
+                    tmp[loop_start_symbol] = reduction_factor
+            else:
+                tmp[loop_start_symbol] = reduction_factor
 
-    return loop_start, reduction_factor
+    for loop_start_symbol, reduction_factor in tmp.items():
+        yield loop_start_symbol, reduction_factor
 
 
 def get_symbol(prefix, predictions, target_indices_char, target_char_indices, reduce_loop_prob=True, ith_best=0):
     if reduce_loop_prob:
-        symbol_where_loop_starts, reduction_factor = reduce_loop(prefix)
-        # Reducing probability of the first symbol of detected loop (if any) for preventing endless traces
-        if symbol_where_loop_starts:
+        for symbol_where_loop_starts, reduction_factor in reduce_loop_probability(prefix):
+            # Reducing probability of the first symbol of detected loop (if any) for preventing endless traces
             symbol_idx = target_char_indices[symbol_where_loop_starts]
             predictions[symbol_idx] *= reduction_factor
 
@@ -208,34 +209,3 @@ def get_symbol(prefix, predictions, target_indices_char, target_char_indices, re
 def get_group_symbol(predictions, target_indices_char_group, ith_best=0):
     group_pred_idx = np.argsort(predictions)[len(predictions) - ith_best - 1]
     return target_indices_char_group[group_pred_idx]
-
-
-'''
-# modify to be able to get second-best prediction
-def adjust_probabilities(predictions, target_char_indices, start_of_the_cycle_symbol,
-                         stop_symbol_probability_amplifier_current):
-    a_pred = list(predictions)
-    if start_of_the_cycle_symbol in target_char_indices:
-        place_of_starting_symbol = target_char_indices[start_of_the_cycle_symbol]
-        a_pred[place_of_starting_symbol] = a_pred[place_of_starting_symbol] / stop_symbol_probability_amplifier_current
-    return a_pred
-
-
-def create_queue(activites, resources):
-    queue = PriorityQueue()
-    # resources_standardized = standardize_list(activites, resources)
-    for activity_index in range(len(activites)):
-        for resource_index in range(len(resources)):
-            queue.put((-(np.log(activites[activity_index]) + np.log(resources[resource_index])),
-                       [activity_index, resource_index]))
-    return queue
-
-
-def standardize_list(list1, list2):
-    len1 = float(len(list1))
-    len2 = float(len(list2))
-    weight = len2 / len1
-    # standardized_list = map(lambda x: weight * x, list2)
-    standardized_list = [weight * x for x in list2]
-    return standardized_list
-'''
