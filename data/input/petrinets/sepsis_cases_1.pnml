@@ -1,0 +1,354 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pnml>
+  <net id="" type="http://www.pnml.org/version-2009/grammar/pnmlcoremodel">
+    <name>
+      <text></text>
+    </name>
+    <page id="n0">
+      <place id="intplace_Leucocytes">
+        <name>
+          <text>intplace_Leucocytes</text>
+        </name>
+      </place>
+      <place id="intplace_Admission NC">
+        <name>
+          <text>intplace_Admission NC</text>
+        </name>
+      </place>
+      <place id="intplace_ER Sepsis Triage">
+        <name>
+          <text>intplace_ER Sepsis Triage</text>
+        </name>
+      </place>
+      <place id="pre_LacticAcid">
+        <name>
+          <text>pre_LacticAcid</text>
+        </name>
+      </place>
+      <place id="pre_IV Liquid">
+        <name>
+          <text>pre_IV Liquid</text>
+        </name>
+      </place>
+      <place id="sink0">
+        <name>
+          <text>sink0</text>
+        </name>
+      </place>
+      <place id="pre_Leucocytes">
+        <name>
+          <text>pre_Leucocytes</text>
+        </name>
+      </place>
+      <place id="intplace_ER Triage">
+        <name>
+          <text>intplace_ER Triage</text>
+        </name>
+      </place>
+      <place id="pre_IV Antibiotics">
+        <name>
+          <text>pre_IV Antibiotics</text>
+        </name>
+      </place>
+      <place id="pre_CRP">
+        <name>
+          <text>pre_CRP</text>
+        </name>
+      </place>
+      <place id="source0">
+        <name>
+          <text>source0</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+      </place>
+      <place id="intplace_CRP">
+        <name>
+          <text>intplace_CRP</text>
+        </name>
+      </place>
+      <place id="intplace_LacticAcid">
+        <name>
+          <text>intplace_LacticAcid</text>
+        </name>
+      </place>
+      <place id="pre_ER Triage">
+        <name>
+          <text>pre_ER Triage</text>
+        </name>
+      </place>
+      <place id="splace_in_CRP_ER Registration_2">
+        <name>
+          <text>splace_in_CRP_ER Registration_2</text>
+        </name>
+      </place>
+      <place id="splace_in_IV Antibiotics_CRP_0">
+        <name>
+          <text>splace_in_IV Antibiotics_CRP_0</text>
+        </name>
+      </place>
+      <place id="pre_Admission NC">
+        <name>
+          <text>pre_Admission NC</text>
+        </name>
+      </place>
+      <place id="splace_in_Admission NC_IV Antibiotics_0">
+        <name>
+          <text>splace_in_Admission NC_IV Antibiotics_0</text>
+        </name>
+      </place>
+      <place id="intplace_ER Registration">
+        <name>
+          <text>intplace_ER Registration</text>
+        </name>
+      </place>
+      <transition id="IV Antibiotics">
+        <name>
+          <text>IV Antibiotics</text>
+        </name>
+      </transition>
+      <transition id="IV Liquid">
+        <name>
+          <text>IV Liquid</text>
+        </name>
+      </transition>
+      <transition id="hid_44">
+        <name>
+          <text>hid_44</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="d767b340-971e-4716-b139-834844807250"/>
+      </transition>
+      <transition id="hid_26">
+        <name>
+          <text>hid_26</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="dfeb4ffd-0f13-4225-b150-d04762400492"/>
+      </transition>
+      <transition id="Admission IC">
+        <name>
+          <text>Admission IC</text>
+        </name>
+      </transition>
+      <transition id="ER Triage">
+        <name>
+          <text>ER Triage</text>
+        </name>
+      </transition>
+      <transition id="CRP">
+        <name>
+          <text>CRP</text>
+        </name>
+      </transition>
+      <transition id="ER Sepsis Triage">
+        <name>
+          <text>ER Sepsis Triage</text>
+        </name>
+      </transition>
+      <transition id="hid_40">
+        <name>
+          <text>hid_40</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="95d08be8-354a-419a-a786-0c686d0a840d"/>
+      </transition>
+      <transition id="hid_49">
+        <name>
+          <text>hid_49</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="36bce250-a42c-4612-bf00-222eead9ecef"/>
+      </transition>
+      <transition id="hid_10">
+        <name>
+          <text>hid_10</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="aa9777b1-1f89-4152-b2b9-7b79abbefbf1"/>
+      </transition>
+      <transition id="hid_18">
+        <name>
+          <text>hid_18</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="5303f765-d447-4e4b-90a6-a3e116ebe9b2"/>
+      </transition>
+      <transition id="hid_27">
+        <name>
+          <text>hid_27</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="c753c1c9-d2de-4622-b414-2778494df6f0"/>
+      </transition>
+      <transition id="hid_29">
+        <name>
+          <text>hid_29</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="a0797c6c-874d-4cef-ab0c-934cc607e49f"/>
+      </transition>
+      <transition id="hid_35">
+        <name>
+          <text>hid_35</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="55ce600a-47d5-44fa-8e93-5a0661a41ff0"/>
+      </transition>
+      <transition id="Leucocytes">
+        <name>
+          <text>Leucocytes</text>
+        </name>
+      </transition>
+      <transition id="Admission NC">
+        <name>
+          <text>Admission NC</text>
+        </name>
+      </transition>
+      <transition id="ER Registration">
+        <name>
+          <text>ER Registration</text>
+        </name>
+      </transition>
+      <transition id="hid_39">
+        <name>
+          <text>hid_39</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="396861fc-2c43-4fe3-9e9b-63994d977d5f"/>
+      </transition>
+      <transition id="hid_41">
+        <name>
+          <text>hid_41</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="b7a1e44f-3389-4d0f-983a-99e3cf3e7bd9"/>
+      </transition>
+      <transition id="hid_51">
+        <name>
+          <text>hid_51</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="c1fb2954-f89c-40bc-a966-df2f025094cd"/>
+      </transition>
+      <transition id="hid_52">
+        <name>
+          <text>hid_52</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="c0da79a7-9261-43b3-af96-7d9c300cb6c9"/>
+      </transition>
+      <transition id="hid_36">
+        <name>
+          <text>hid_36</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="0dc5cf04-1929-4303-aa21-49e32c81273f"/>
+      </transition>
+      <transition id="hid_48">
+        <name>
+          <text>hid_48</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="cd8a3c4e-c43a-46ec-9e44-03005d20bad2"/>
+      </transition>
+      <transition id="Release A">
+        <name>
+          <text>Release A</text>
+        </name>
+      </transition>
+      <transition id="LacticAcid">
+        <name>
+          <text>LacticAcid</text>
+        </name>
+      </transition>
+      <transition id="hid_43">
+        <name>
+          <text>hid_43</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="6b6e79f4-8c28-41db-b1e6-b03a04ff79c2"/>
+      </transition>
+      <transition id="hid_46">
+        <name>
+          <text>hid_46</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="4ba90170-ef13-4cb8-9dfc-4665214a37f3"/>
+      </transition>
+      <transition id="hid_13">
+        <name>
+          <text>hid_13</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="c2e6ca6e-e0e7-42a7-8bff-bce8b15a3ac0"/>
+      </transition>
+      <transition id="hid_25">
+        <name>
+          <text>hid_25</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="1562c60a-3a27-4929-80f4-792582f1bb4f"/>
+      </transition>
+      <arc id="1711155767808" source="source0" target="ER Registration"/>
+      <arc id="1711155812864" source="hid_25" target="pre_Admission NC"/>
+      <arc id="1711155797008" source="ER Registration" target="intplace_ER Registration"/>
+      <arc id="1711155794464" source="intplace_CRP" target="hid_41"/>
+      <arc id="1711155810848" source="intplace_ER Sepsis Triage" target="hid_52"/>
+      <arc id="1711155812384" source="hid_49" target="pre_ER Triage"/>
+      <arc id="1711155745840" source="pre_Admission NC" target="Admission NC"/>
+      <arc id="1711155797056" source="intplace_ER Registration" target="hid_48"/>
+      <arc id="1711155811904" source="hid_52" target="pre_LacticAcid"/>
+      <arc id="1711155813440" source="intplace_Admission NC" target="hid_13"/>
+      <arc id="1711155822656" source="intplace_Admission NC" target="Admission IC"/>
+      <arc id="1711155745888" source="hid_13" target="pre_Admission NC"/>
+      <arc id="1711155811424" source="hid_36" target="pre_Leucocytes"/>
+      <arc id="1711155812960" source="hid_51" target="pre_IV Liquid"/>
+      <arc id="1711155812480" source="hid_40" target="pre_CRP"/>
+      <arc id="1711155814016" source="intplace_LacticAcid" target="hid_10"/>
+      <arc id="1711155784336" source="intplace_Admission NC" target="hid_35"/>
+      <arc id="1711155783328" source="Release A" target="sink0"/>
+      <arc id="1711155812000" source="hid_44" target="pre_Leucocytes"/>
+      <arc id="1711155813536" source="intplace_ER Triage" target="hid_18"/>
+      <arc id="1711155822752" source="intplace_Admission NC" target="Release A"/>
+      <arc id="1711155765936" source="pre_IV Liquid" target="IV Liquid"/>
+      <arc id="1711155796144" source="LacticAcid" target="intplace_LacticAcid"/>
+      <arc id="1711155795136" source="intplace_CRP" target="hid_43"/>
+      <arc id="1711155811520" source="hid_27" target="pre_ER Triage"/>
+      <arc id="1711155813056" source="hid_41" target="pre_IV Liquid"/>
+      <arc id="1711155768528" source="intplace_Leucocytes" target="hid_25"/>
+      <arc id="1711155766992" source="pre_LacticAcid" target="LacticAcid"/>
+      <arc id="1711155969232" source="pre_Leucocytes" target="Leucocytes"/>
+      <arc id="1711155702992" source="splace_in_IV Antibiotics_CRP_0" target="hid_10"/>
+      <arc id="1711155812576" source="hid_26" target="pre_CRP"/>
+      <arc id="1711155702512" source="pre_IV Antibiotics" target="IV Antibiotics"/>
+      <arc id="1711155794176" source="intplace_CRP" target="hid_40"/>
+      <arc id="1711155810560" source="intplace_ER Sepsis Triage" target="hid_51"/>
+      <arc id="1711155812096" source="hid_48" target="pre_Leucocytes"/>
+      <arc id="1711155813632" source="intplace_ER Triage" target="ER Sepsis Triage"/>
+      <arc id="1711155822848" source="intplace_CRP" target="Admission IC"/>
+      <arc id="1711155769104" source="intplace_Leucocytes" target="hid_27"/>
+      <arc id="1711155794704" source="hid_41" target="splace_in_IV Antibiotics_CRP_0"/>
+      <arc id="1711155702560" source="hid_10" target="pre_IV Antibiotics"/>
+      <arc id="1711155811616" source="IV Liquid" target="pre_IV Antibiotics"/>
+      <arc id="1711155813152" source="hid_46" target="pre_CRP"/>
+      <arc id="1711155797296" source="hid_48" target="splace_in_CRP_ER Registration_2"/>
+      <arc id="1711155748672" source="splace_in_CRP_ER Registration_2" target="hid_18"/>
+      <arc id="1711155796288" source="intplace_LacticAcid" target="hid_46"/>
+      <arc id="1711155812672" source="Admission IC" target="pre_Leucocytes"/>
+      <arc id="1711155814208" source="intplace_Leucocytes" target="Release A"/>
+      <arc id="1711155746128" source="splace_in_Admission NC_IV Antibiotics_0" target="hid_13"/>
+      <arc id="1711155783520" source="Admission NC" target="intplace_Admission NC"/>
+      <arc id="1711155812192" source="hid_52" target="pre_Leucocytes"/>
+      <arc id="1711155968368" source="pre_ER Triage" target="ER Triage"/>
+      <arc id="1711155782512" source="ER Triage" target="intplace_ER Triage"/>
+      <arc id="1711155811712" source="hid_35" target="pre_CRP"/>
+      <arc id="1711155748240" source="hid_18" target="pre_CRP"/>
+      <arc id="1711155782032" source="intplace_Leucocytes" target="hid_29"/>
+      <arc id="1711155785104" source="CRP" target="intplace_CRP"/>
+      <arc id="1711155785632" source="intplace_CRP" target="hid_39"/>
+      <arc id="1711155812768" source="hid_39" target="pre_Admission NC"/>
+      <arc id="1711155814304" source="intplace_CRP" target="Release A"/>
+      <arc id="1711155784624" source="intplace_Admission NC" target="hid_36"/>
+      <arc id="1711155797440" source="intplace_ER Registration" target="hid_49"/>
+      <arc id="1711155812288" source="hid_29" target="pre_Leucocytes"/>
+      <arc id="1711155813824" source="intplace_Leucocytes" target="hid_10"/>
+      <arc id="1711155747280" source="pre_CRP" target="CRP"/>
+      <arc id="1711155782608" source="IV Antibiotics" target="splace_in_Admission NC_IV Antibiotics_0"/>
+      <arc id="1711155797968" source="ER Sepsis Triage" target="intplace_ER Sepsis Triage"/>
+      <arc id="1711155768288" source="Leucocytes" target="intplace_Leucocytes"/>
+      <arc id="1711155795424" source="intplace_CRP" target="hid_44"/>
+      <arc id="1711155811808" source="hid_43" target="pre_LacticAcid"/>
+      <arc id="1711155768816" source="intplace_Leucocytes" target="hid_26"/>
+    </page>
+    <finalmarkings>
+      <marking>
+        <place idref="sink0">
+          <text>1</text>
+        </place>
+      </marking>
+    </finalmarkings>
+  </net>
+</pnml>
