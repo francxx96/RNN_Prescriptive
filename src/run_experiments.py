@@ -1,21 +1,14 @@
 import argparse
 import tensorflow as tf
+import statistics as stat
 
-from evaluation.evaluator import Evaluator
-from commons import utils, shared_variables as shared
-from training.train_cf import TrainCF
-from training.train_cfr import TrainCFR
+from commons import log_utils, shared_variables as shared
+from evaluation import evaluation
+from training import train_cf
+from training import train_cfr
 
 
 class ExperimentRunner:
-    _log_names = [
-        'Synthetic log labelled.xes',
-        'sepsis_cases_1.xes',
-        'sepsis_cases_2.xes',
-        'sepsis_cases_4.xes',
-        'Production.xes'
-    ]
-
     def __init__(self, model, port, python_port, train, evaluate):
         self._model = model
         self._port = port
@@ -23,36 +16,41 @@ class ExperimentRunner:
         self._train = train
         self._evaluate = evaluate
 
-        self._evaluator = Evaluator()
-
         print(args.port, python_port)
-        print(self._model)
+        print('Used network:', self._model)
+        print('Perform training:', self._train)
+        print('Perform evaluation:', self._evaluate)
 
-    def _run_single_experiment(self, log_name):
-        xes_log_path = shared.log_folder / log_name
-        log_name = utils.encode_log(xes_log_path)
-
-        print('log_name:', log_name)
-        print('train:', self._train)
-        print('evaluate:', self._evaluate)
-
-        if self._train:
-            TrainCF.train(log_name, self._model)
-            TrainCFR.train(log_name, self._model)
-        if self._evaluate:
-            self._evaluator.evaluate_all(log_name, self._model)
-
-    def run_experiments(self, input_log_name):
+    def run_experiments(self, log_list):
         config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=4, inter_op_parallelism_threads=4,
                                           allow_soft_placement=True)
         session = tf.compat.v1.Session(config=config)
         tf.compat.v1.keras.backend.set_session(session)
 
-        if input_log_name is not None:
-            self._run_single_experiment(input_log_name)
-        else:
-            for log_name in self._log_names:
-                self._run_single_experiment(log_name)
+        for log_name in log_list:
+            log_path = shared.log_folder / log_name
+            self._run_single_experiment(log_path)
+
+    def _run_single_experiment(self, log_path):
+        log_data = log_utils.LogData(log_path)
+        log_data.encode_log()
+
+        trace_sizes = list(log_data.log.value_counts(subset=[log_data.case_name_key], sort=False))
+
+        print('Log name:', log_data.log_name.value + log_data.log_ext.value)
+        print('Log size:', len(trace_sizes))
+        print('Trace size avg.:', stat.mean(trace_sizes))
+        print('Trace size stddev.:', stat.stdev(trace_sizes))
+        print('Trace size min.:', min(trace_sizes))
+        print('Trace size max.:', max(trace_sizes))
+        print(f'Evaluation prefix range: [{log_data.evaluation_prefix_start}, {log_data.evaluation_prefix_end}]')
+
+        if self._train:
+            train_cf.train(log_data, self._model)
+            train_cfr.train(log_data, self._model)
+
+        if self._evaluate:
+            evaluation.evaluate_all(log_data, self._model)
 
 
 if __name__ == '__main__':
@@ -68,12 +66,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    logs = [args.log.strip()] if args.log else shared.log_list
+
     if args.full_run:
         args.train = True
         args.evaluate = True
 
     ExperimentRunner(model=args.model,
                      port=args.port,
-                     python_port=args.port + 1,
+                     python_port=args.port+1,
                      train=args.train,
-                     evaluate=args.evaluate).run_experiments(input_log_name=args.log)
+                     evaluate=args.evaluate) \
+        .run_experiments(log_list=logs)
