@@ -1,10 +1,13 @@
 import argparse
 import csv
+from pathlib import Path
+
 import numpy as np
 from enum import Enum
 from matplotlib import pyplot as plt
 
 from src.commons import shared_variables as shared
+from src.evaluation.inference_algorithms import baseline_cf, baseline_cfr, beamsearch_cf, beamsearch_cfr
 
 
 class ResultParser:
@@ -17,14 +20,8 @@ class ResultParser:
         R = 1
         O = 2
 
-    _all_log_names = [
-        "Data-flow log"
-    ]
-
     _headers = ['BL_CF', 'BL_R', 'BS_CF', 'BS_R']
-    _metrics = ['baseline', 'beamsearch']
-
-    _model_types = ['CF', 'CFR']
+    _eval_algorithms = [baseline_cf, baseline_cfr, beamsearch_cf, beamsearch_cfr]
 
     # <editor-fold desc="reference_table">
     _reference_table = np.array(
@@ -57,8 +54,19 @@ class ResultParser:
         ColumnTypes.O: 'A0A0A0'
     }
 
-    def __init__(self, log_names):
-        self._log_names = log_names
+    def __init__(self, log_filenames):
+        self._log_names = []
+
+        for log_filename in log_filenames:
+            log_path = shared.log_folder / log_filename
+            if log_filename.endswith('.xes') or log_filename.endswith('.csv'):
+                log_name = log_path.stem
+            elif log_filename.endswith('.xes.gz'):
+                log_name = log_path.with_suffix("").stem
+            else:
+                raise RuntimeError(f"Extension of {log_filename} must be in ['.xes', '.xes.gz', '.csv'].")
+
+            self._log_names.append(log_name)
 
     @staticmethod
     def _parse_log(filepath, resource_prediction=False):
@@ -86,10 +94,9 @@ class ResultParser:
         scores = np.mean(np.array(scores), -1)
         return scores
 
-    def _populate_table(self, table, scores, log_name, metric, model_type):
+    def _populate_table(self, table, scores, log_name, eval_algorithm):
         row = self._log_names.index(log_name)
-        column = self._metrics.index(metric) * (len(self._model_types)+1) * 2 \
-                 + (self._model_types.index(model_type) * (len(self._model_types)+1))
+        column = self._eval_algorithms.index(eval_algorithm) * 3
 
         table[row, column] = scores[0]
         table[row, column + 1] = scores[1]
@@ -138,16 +145,16 @@ class ResultParser:
 
         if highlight_type == ResultParser.HighlightTypes.ROW_SCORE:
             if score == reference_score:
-                print('\\cellcolor[HTML]{%s}\\textbf{%.0f %.0f}' % (column_color, 100*score, 100*std), end=' '),
+                print('\\cellcolor[HTML]{%s}\\textbf{%.0f$\\pm$%.0f}' % (column_color, 100*score, 100*std), end=' '),
             else:
-                print('%.0f %.0f' % (100*score, 100*std), end=' '),
+                print('%.0f$\\pm$%.0f' % (100*score, 100*std), end=' '),
         elif highlight_type == ResultParser.HighlightTypes.IMPROVEMENT_SCORE:
             if score > 0:
-                print('\\cellcolor[HTML]{%s}\\textbf{%.0f %.0f}' % (column_color, 100*score, 100*std), end=' '),
+                print('\\cellcolor[HTML]{%s}\\textbf{%.0f$\\pm$%.0f}' % (column_color, 100*score, 100*std), end=' '),
             else:
-                print('%.0f %.0f' % (100*score, 100*std), end=' '),
+                print('%.0f$\\pm$%.0f' % (100*score, 100*std), end=' '),
         else:
-            print('%.0f %.0f' % (100*score, 100*std), end=' '),
+            print('%.0f$\\pm$%.0f' % (100*score, 100*std), end=' '),
 
     def _print_latex_table(self, populated_table, std_table, highlight_type, table_caption, table_label):
         cf_maximums = np.max(populated_table[:, 0::3], 1)
@@ -203,23 +210,22 @@ class ResultParser:
 
     def _load_table(self, folderpath):
         if folderpath == 'reference':
-            return self._reference_table[sorted(self._all_log_names.index(i) for i in self._log_names)]
+            return self._reference_table[sorted(self._log_names.index(i) for i in self._log_names)]
 
         elif folderpath == 'zeros':
-            return np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2)), \
-                   np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2))
+            return np.zeros((len(self._log_names), len(self._eval_algorithms) * 3)), \
+                   np.zeros((len(self._log_names), len(self._eval_algorithms) * 3))
 
         else:
             table_folds = []
             for fold in range(shared.folds):
-                fold_table = np.zeros((len(self._log_names), len(self._metrics) * (len(self._model_types)+1) * 2))
+                fold_table = np.zeros((len(self._log_names), len(self._eval_algorithms) * 3))
 
                 for log_name in self._log_names:
-                    for metric in self._metrics:
-                        for model_type in self._model_types:
-                            filepath = folderpath / str(fold) / 'results' / metric / f"{log_name}_{model_type}.csv"
-                            scores = self._parse_log(filepath, model_type == 'CFR')
-                            self._populate_table(fold_table, scores, log_name, metric, model_type)
+                    for alg in self._eval_algorithms:
+                        filepath = folderpath / str(fold) / 'results' / Path(alg.__file__).stem / f"{log_name}.csv"
+                        scores = self._parse_log(filepath, alg in [baseline_cfr, beamsearch_cfr])
+                        self._populate_table(fold_table, scores, log_name, alg)
                 table_folds.append(fold_table)
             populated_table = np.mean(table_folds, axis=0)
             std_table = np.std(table_folds, axis=0)
@@ -237,22 +243,23 @@ class ResultParser:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logs', default='[Synthetic log labelled,sepsis_cases_1,sepsis_cases_2,sepsis_cases_4]', help='input logs')
-    parser.add_argument('--target_model', default='old_model', help='target model name')
+    parser.add_argument('--log', default=None, help='input logs')
+    parser.add_argument('--target_model', default="keras_trans", help='choose among ["LSTM", "custom_trans", "keras_trans"]')
     parser.add_argument('--reference_model', default='zeros', help='reference model name')
-    parser.add_argument('--table_caption', default='Old model, PN Checker', help='final latex caption')
-    parser.add_argument('--table_label', default='tb:old_model', help='final latex label')
     args = parser.parse_args()
 
-    result_parser = ResultParser(args.logs.replace('[', '').replace(']', '').split(','))
+    logs = [args.log.strip()] if args.log else shared.log_list
+
+    result_parser = ResultParser(logs)
 
     models_dict = {
-        'old_model': shared.output_folder / 'old_model',
-        'new_model': shared.output_folder / 'new_model',
-        'new_model_2': shared.output_folder / 'new_model_2',
+        args.target_model: shared.output_folder / args.target_model,
         'reference': 'reference',
         'zeros': 'zeros'
     }
 
+    caption = f'pn_checker,{args.target_model}'.replace('_', '\_')
+    label = f'tb:{args.target_model}'.replace('_', '\_')
+
     result_parser.compare_results(models_dict[args.target_model], reference=models_dict[args.reference_model],
-                                  table_caption=args.table_caption, table_label=args.table_label)
+                                  table_caption=caption, table_label=label)
