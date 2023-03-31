@@ -52,126 +52,129 @@ def run_experiments(log_data: LogData, compliant_traces: pd.DataFrame, maxlen, p
                              "Ground truth outcome", "Predicted outcome", "Outcome diff.",
                              "compliantness"])
 
-        for prefix_size in range(log_data.evaluation_prefix_start, log_data.evaluation_prefix_end+1):
-            print("Prefix size: " + str(prefix_size))
+    for prefix_size in range(log_data.evaluation_prefix_start, log_data.evaluation_prefix_end+1):
+        print("Prefix size: " + str(prefix_size))
 
-            for trace_name, trace in compliant_traces.groupby(log_data.case_name_key):
+        for trace_name, trace in compliant_traces.groupby(log_data.case_name_key):
 
-                if trace.shape[0] < prefix_size:
-                    continue  # Make no prediction for this case, since this case has ended already
+            if trace.shape[0] < prefix_size:
+                continue  # Make no prediction for this case, since this case has ended already
 
-                trace_prefix = trace.head(prefix_size)
-                trace_ground_truth = trace.tail(trace.shape[0] - prefix_size)
-                act_ground_truth = ''.join(trace_ground_truth[log_data.act_name_key].tolist())
-                res_ground_truth = ''.join(trace_ground_truth[log_data.res_name_key].tolist())
-                outcome_ground_truth = trace[log_data.label_name_key].iloc[0]
+            trace_prefix = trace.head(prefix_size)
+            trace_ground_truth = trace.tail(trace.shape[0] - prefix_size)
+            act_ground_truth = ''.join(trace_ground_truth[log_data.act_name_key].tolist())
+            res_ground_truth = ''.join(trace_ground_truth[log_data.res_name_key].tolist())
+            outcome_ground_truth = trace[log_data.label_name_key].iloc[0]
 
-                # Initialize queue for beam search, put root of the tree inside
-                queue_next_steps: PriorityQueue[NodePrediction] = PriorityQueue()
-                queue_next_steps.put(NodePrediction(trace_prefix))
+            # Initialize queue for beam search, put root of the tree inside
+            queue_next_steps: PriorityQueue[NodePrediction] = PriorityQueue()
+            queue_next_steps.put(NodePrediction(trace_prefix))
 
-                queue_next_steps_future: PriorityQueue[NodePrediction] = PriorityQueue()
-                found_satisfying_constraint = False
+            queue_next_steps_future: PriorityQueue[NodePrediction] = PriorityQueue()
+            found_satisfying_constraint = False
 
-                current_beam_size = shared.beam_size
-                current_prediction_premis = None
+            current_beam_size = shared.beam_size
+            current_prediction_premis = None
 
-                for i in range(predict_size - prefix_size):
-                    for k in range(current_beam_size):
-                        if queue_next_steps.empty():
-                            break
+            for i in range(predict_size - prefix_size):
+                for k in range(current_beam_size):
+                    if queue_next_steps.empty():
+                        break
 
-                        current_prediction_premis = queue_next_steps.get()
+                    current_prediction_premis = queue_next_steps.get()
 
-                        if not found_satisfying_constraint:
-                            if get_pn_fitness(pn_file, current_prediction_premis.cropped_trace, log_data)[trace_name] \
+                    if not found_satisfying_constraint:
+                        if get_pn_fitness(pn_file, current_prediction_premis.cropped_trace, log_data)[trace_name] \
+                                >= log_data.evaluation_th:
+                            # the trace is verified, and we can just finish the predictions
+                            # beam size is 1 because predict only sequence of events
+                            current_beam_size = 1
+                            current_prediction_premis.probability_of = 0.0
+                            # overwrite new queue
+                            queue_next_steps_future = PriorityQueue()
+                            found_satisfying_constraint = True
+
+                    enc = current_prediction_premis.model_input
+                    temp_cropped_trace = current_prediction_premis.cropped_trace
+                    temp_cropped_line = current_prediction_premis.cropped_line
+                    temp_cropped_line_group = current_prediction_premis.cropped_line_group
+                    y = model.predict(enc, verbose=0)  # make predictions
+                    # split predictions into seperate activity, resource and outcome predictions
+                    y_char = y[0][0]
+                    y_group = y[1][0]
+                    y_o = y[2][0][0]
+
+                    for j in range(current_beam_size):
+                        temp_prediction = get_symbol(temp_cropped_line, y_char, target_indices_char,
+                                                     target_char_indices, ith_best=j)
+
+                        temp_prediction_group = get_group_symbol(y_group, target_indices_char_group)
+
+                        # end of case was just predicted, therefore, stop predicting further into the future
+                        if temp_prediction == '!':
+                            if get_pn_fitness(pn_file, temp_cropped_trace, log_data)[trace_name] \
                                     >= log_data.evaluation_th:
-                                # the trace is verified, and we can just finish the predictions
-                                # beam size is 1 because predict only sequence of events
-                                current_beam_size = 1
-                                current_prediction_premis.probability_of = 0.0
-                                # overwrite new queue
-                                queue_next_steps_future = PriorityQueue()
-                                found_satisfying_constraint = True
+                                stop_symbol_probability_amplifier_current = 1
+                                queue_next_steps = PriorityQueue()
+                                break
+                            else:
+                                continue
 
-                        enc = current_prediction_premis.model_input
-                        temp_cropped_trace = current_prediction_premis.cropped_trace
-                        temp_cropped_line = current_prediction_premis.cropped_line
-                        temp_cropped_line_group = current_prediction_premis.cropped_line_group
-                        y = model.predict(enc, verbose=0)  # make predictions
-                        # split predictions into seperate activity, resource and outcome predictions
-                        y_char = y[0][0]
-                        y_group = y[1][0]
-                        y_o = y[2][0][0]
+                        predicted_row = temp_cropped_trace.tail(1).copy()
+                        predicted_row.loc[:, log_data.act_name_key] = temp_prediction
+                        predicted_row.loc[:, log_data.res_name_key] = temp_prediction_group
+                        # Fake time because we don't care about it in here
+                        predicted_row.loc[:, log_data.timestamp_key] = predicted_row[log_data.timestamp_key] + pd.Timedelta(hours=1)
+                        temp_cropped_trace = pd.concat([temp_cropped_trace, predicted_row])
 
-                        for j in range(current_beam_size):
-                            temp_prediction = get_symbol(temp_cropped_line, y_char, target_indices_char,
-                                                         target_char_indices, ith_best=j)
+                        probability_this = np.sort(y_char)[len(y_char) - 1 - j]
 
-                            temp_prediction_group = get_group_symbol(y_group, target_indices_char_group)
+                        temp = NodePrediction(temp_cropped_trace,
+                                              current_prediction_premis.probability_of + np.log(probability_this))
 
-                            # end of case was just predicted, therefore, stop predicting further into the future
-                            if temp_prediction == '!':
-                                if get_pn_fitness(pn_file, temp_cropped_trace, log_data)[trace_name] \
-                                        >= log_data.evaluation_th:
-                                    stop_symbol_probability_amplifier_current = 1
-                                    queue_next_steps = PriorityQueue()
-                                    break
-                                else:
-                                    continue
+                        queue_next_steps_future.put(temp)
 
-                            predicted_row = temp_cropped_trace.tail(1).copy()
-                            predicted_row.loc[:, log_data.act_name_key] = temp_prediction
-                            predicted_row.loc[:, log_data.res_name_key] = temp_prediction_group
-                            # Fake time because we don't care about it in here
-                            predicted_row.loc[:, log_data.timestamp_key] = predicted_row[log_data.timestamp_key] + pd.Timedelta(hours=1)
-                            temp_cropped_trace = pd.concat([temp_cropped_trace, predicted_row])
+                queue_next_steps = queue_next_steps_future
+                queue_next_steps_future = PriorityQueue()
 
-                            probability_this = np.sort(y_char)[len(y_char) - 1 - j]
+            if current_prediction_premis is None:
+                print("Cannot find any trace that is compliant with formula given current beam size")
+                break
 
-                            temp = NodePrediction(temp_cropped_trace,
-                                                  current_prediction_premis.probability_of + np.log(probability_this))
+            predicted = current_prediction_premis.cropped_line[prefix_size:]
+            predicted_group = current_prediction_premis.cropped_line_group[prefix_size:]
+            predicted_outcome = '1' if y_o >= 0.5 else '0'
 
-                            queue_next_steps_future.put(temp)
+            compliantness = get_pn_fitness(pn_file, trace, log_data)[trace_name] >= 1
 
-                    queue_next_steps = queue_next_steps_future
-                    queue_next_steps_future = PriorityQueue()
+            output = []
+            if len(act_ground_truth) > 0:
+                output.append(prefix_size)
+                output.append(act_ground_truth)
+                output.append(predicted)
+                dls = 1 - \
+                    (damerau_levenshtein_distance(predicted, act_ground_truth) / max(len(predicted), len(act_ground_truth)))
+                if dls < 0:
+                    dls = 0
+                output.append(dls)
+                output.append(1 - distance.jaccard(predicted, act_ground_truth))
 
-                if current_prediction_premis is None:
-                    print("Cannot find any trace that is compliant with formula given current beam size")
-                    break
+                output.append(res_ground_truth)
+                output.append(predicted_group)
+                dls_res = 1 - \
+                    (damerau_levenshtein_distance(predicted_group, res_ground_truth)
+                     / max(len(predicted_group), len(res_ground_truth)))
+                if dls_res < 0:
+                    dls_res = 0
+                output.append(dls_res)
 
-                predicted = current_prediction_premis.cropped_line[prefix_size:]
-                predicted_group = current_prediction_premis.cropped_line_group[prefix_size:]
-                predicted_outcome = '1' if y_o >= 0.5 else '0'
+                output.append(outcome_ground_truth)
+                output.append(predicted_outcome)
+                output.append('1' if outcome_ground_truth == predicted_outcome else '0')
 
-                compliantness = get_pn_fitness(pn_file, trace, log_data)[trace_name] >= 1
+                output.append('1' if compliantness else '0')
 
-                output = []
-                if len(act_ground_truth) > 0:
-                    output.append(prefix_size)
-                    output.append(act_ground_truth)
-                    output.append(predicted)
-                    dls = 1 - \
-                        (damerau_levenshtein_distance(predicted, act_ground_truth) / max(len(predicted), len(act_ground_truth)))
-                    if dls < 0:
-                        dls = 0
-                    output.append(dls)
-                    output.append(1 - distance.jaccard(predicted, act_ground_truth))
-
-                    output.append(res_ground_truth)
-                    output.append(predicted_group)
-                    dls_res = 1 - \
-                        (damerau_levenshtein_distance(predicted_group, res_ground_truth)
-                         / max(len(predicted_group), len(res_ground_truth)))
-                    if dls_res < 0:
-                        dls_res = 0
-                    output.append(dls_res)
-
-                    output.append(outcome_ground_truth)
-                    output.append(predicted_outcome)
-                    output.append('1' if outcome_ground_truth == predicted_outcome else '0')
-
-                    output.append('1' if compliantness else '0')
-
+            if output:
+                with open(output_file, 'a', newline='') as csvfile:
+                    spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                     spamwriter.writerow(output)
