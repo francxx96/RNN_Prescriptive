@@ -56,7 +56,7 @@ class ExperimentRunner:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--log', default=None, help='input log')
-    parser.add_argument('--model', default="keras_trans", help='choose among ["NN", "custom_trans", "keras_trans"]')
+    parser.add_argument('--model', default="keras_trans", help='choose among ["LSTM", "custom_trans", "keras_trans"]')
     parser.add_argument('--port', type=int, default=25333, help='communication port (python port = port + 1)')
 
     group = parser.add_mutually_exclusive_group()

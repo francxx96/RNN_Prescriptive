@@ -30,7 +30,7 @@ def _build_model(max_len, num_features, target_chars, target_chars_group, models
 
     main_input = Input(shape=(max_len, num_features), name='main_input')
 
-    if models_folder == "NN":
+    if models_folder == "LSTM":
         processed = LSTM(50, return_sequences=True, dropout=0.2)(main_input)
         processed = BatchNormalization()(processed)
 
