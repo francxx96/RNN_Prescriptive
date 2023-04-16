@@ -16,7 +16,7 @@ from jellyfish import damerau_levenshtein_distance
 
 from src.commons import shared_variables as shared
 from src.commons.log_utils import LogData
-from src.evaluation.prepare_data import get_symbol, encode, get_pn_fitness
+from src.evaluation.prepare_data import get_act_prediction, encode, get_pn_fitness
 from src.training.train_common import CustomTransformer
 
 
@@ -96,8 +96,8 @@ def run_experiments(log_data: LogData, compliant_traces: pd.DataFrame, maxlen, p
                     y_o = y[1][0][0]
 
                     for j in range(current_beam_size):
-                        temp_prediction = get_symbol(temp_cropped_line, y_char, target_indices_char,
-                                                     target_char_indices, ith_best=j)
+                        temp_prediction = get_act_prediction(temp_cropped_line, y_char, target_indices_char,
+                                                             target_char_indices, ith_best=j)
 
                         # end of case was just predicted, therefore, stop predicting further into the future
                         if temp_prediction == '!':

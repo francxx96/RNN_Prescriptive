@@ -35,6 +35,8 @@ def prepare_testing_data(act_name_key: str, res_name_key: str, training_traces: 
     res_chars.sort()
 
     target_res_chars = copy.copy(res_chars)
+    target_res_chars.append('!')
+    target_res_chars.sort()
 
     res_to_int = dict((c, i) for i, c in enumerate(res_chars))
     target_res_to_int = dict((c, i) for i, c in enumerate(target_res_chars))
@@ -43,8 +45,10 @@ def prepare_testing_data(act_name_key: str, res_name_key: str, training_traces: 
     return act_to_int, target_act_to_int, target_int_to_act, res_to_int, target_res_to_int, target_int_to_res
 
 
-# selects traces verified by a petri net model
 def select_petrinet_compliant_traces(log_data: LogData, traces: pd.DataFrame, path_to_pn_model_file: Path):
+    """
+    Select traces compliant to a Petri Net at least in a certain percentage specified as compliance_th
+    """
     compliant_trace_ids = []
     for trace_id, fitness in get_pn_fitness(path_to_pn_model_file, traces, log_data).items():
         if fitness >= log_data.compliance_th:
@@ -73,9 +77,12 @@ def get_pn_fitness(pn_file: Path, log: pd.DataFrame, log_data: LogData) -> dict[
     return trace_ids_with_fitness
 
 
-# define helper functions
-# this one encodes the current sentence into the onehot encoding
+# === Helper functions ===
+
 def encode(sentence: str, maxlen: int, char_indices: dict[str, int]) -> np.ndarray:
+    """
+    Onehot encoding of an ongoing trace (only control-flow)
+    """
     chars = list(char_indices.keys())
     num_features = len(chars) + 1
     x = np.zeros((1, maxlen, num_features), dtype=np.float32)
@@ -88,10 +95,11 @@ def encode(sentence: str, maxlen: int, char_indices: dict[str, int]) -> np.ndarr
     return x
 
 
-# define helper functions
-# this one encodes the current sentence into the onehot encoding
 def encode_with_group(sentence: str, sentence_group: str, maxlen: int, char_indices: dict[str, int],
                       char_indices_group: dict[str, int]) -> np.ndarray:
+    """
+    Onehot encoding of an ongoing trace (control-flow + resource)
+    """
     chars = list(char_indices.keys())
     chars_group = list(char_indices_group.keys())
     num_features = len(chars) + len(chars_group) + 1
@@ -108,21 +116,23 @@ def encode_with_group(sentence: str, sentence_group: str, maxlen: int, char_indi
     return x
 
 
-# find repetitions
-def repetitions(s):
+def repetitions(seq: str):
     r = re.compile(r"(.+?)\1+")
-    for match in r.finditer(s):
-        yield match.group(1), len(match.group(0)) / len(match.group(1))
+    for match in r.finditer(seq):
+        indices = [index + match.start()
+                   for index in range(len(seq[match.start(): match.end()]))
+                   if seq[match.start(): match.end()].startswith(match.group(1), index)]
+        yield match.group(1), len(match.group(0)) / len(match.group(1)), indices
 
 
-def reduce_loop_probability(trace):
+def reduce_act_loop_probability(act_seq):
     tmp = dict()
 
-    # num_repetitions = number of consequent repetitions of loop inside trace
-    for loop, num_repetitions in repetitions(trace):
-        if trace.endswith(loop):
+    # loop_len = number of consequent repetitions of loop inside trace
+    for loop, loop_len, _ in repetitions(act_seq):
+        if act_seq.endswith(loop):
             loop_start_symbol = loop[0]
-            reduction_factor = 1 / np.math.exp(num_repetitions)
+            reduction_factor = 1 / np.math.exp(loop_len)
 
             if loop_start_symbol in tmp:
                 if reduction_factor > tmp[loop_start_symbol]:
@@ -134,17 +144,52 @@ def reduce_loop_probability(trace):
         yield loop_start_symbol, reduction_factor
 
 
-def get_symbol(prefix, predictions, target_indices_char, target_char_indices, reduce_loop_prob=True, ith_best=0):
+def get_act_prediction(prefix, prediction, target_ind_to_act, target_act_to_ind, reduce_loop_prob=True, ith_best=0):
     if reduce_loop_prob:
-        for symbol_where_loop_starts, reduction_factor in reduce_loop_probability(prefix):
+        for symbol_where_loop_starts, reduction_factor in reduce_act_loop_probability(prefix):
             # Reducing probability of the first symbol of detected loop (if any) for preventing endless traces
-            symbol_idx = target_char_indices[symbol_where_loop_starts]
-            predictions[symbol_idx] *= reduction_factor
+            symbol_idx = target_act_to_ind[symbol_where_loop_starts]
+            prediction[symbol_idx] *= reduction_factor
 
-    pred_idx = np.argsort(predictions)[len(predictions) - ith_best - 1]
-    return target_indices_char[pred_idx]
+    pred_idx = np.argsort(prediction)[len(prediction) - ith_best - 1]
+    return target_ind_to_act[pred_idx]
 
 
-def get_group_symbol(predictions, target_indices_char_group, ith_best=0):
-    group_pred_idx = np.argsort(predictions)[len(predictions) - ith_best - 1]
-    return target_indices_char_group[group_pred_idx]
+def reduce_loop_probability(act_seq, res_seq):
+    tmp = dict()
+
+    # loop_len = number of consequent repetitions of loop inside trace
+    for loop, loop_len, loop_start_indices in repetitions(act_seq):
+        if act_seq.endswith(loop):
+            loop_start_symbol = loop[0]
+            reduction_factor = 1 / np.math.exp(loop_len)
+            loop_related_resources = set(res_seq[i] for i in loop_start_indices)
+
+            if loop_start_symbol in tmp:
+                tmp[loop_start_symbol][0].update(loop_related_resources)
+                if reduction_factor > tmp[loop_start_symbol][1]:
+                    tmp[loop_start_symbol][1] = reduction_factor
+            else:
+                tmp[loop_start_symbol] = [loop_related_resources, reduction_factor]
+
+    for loop_start_symbol, lst in tmp.items():
+        yield loop_start_symbol, lst[0], lst[1]
+
+
+def get_predictions(act_prefix, res_prefix, act_pred, res_pred, target_ind_to_act, target_act_to_ind, target_ind_to_res,
+                    target_res_to_ind, reduce_loop_prob=True, ith_best=0):
+    if reduce_loop_prob:
+        for start_act_of_loop, related_res_list, reduction_factor in reduce_loop_probability(act_prefix, res_prefix):
+            # Reducing probability of the first symbol of detected loop (if any) and of the related resources
+            # for preventing endless traces
+            act_idx = target_act_to_ind[start_act_of_loop]
+            act_pred[act_idx] *= reduction_factor
+
+            for res in related_res_list:
+                res_idx = target_res_to_ind[res]
+                res_pred[res_idx] *= reduction_factor
+
+    act_pred_idx = np.argsort(act_pred)[len(act_pred) - ith_best - 1]
+    res_pred_idx = np.argsort(res_pred)[len(res_pred) - ith_best - 1]
+
+    return target_ind_to_act[act_pred_idx], target_ind_to_res[res_pred_idx]

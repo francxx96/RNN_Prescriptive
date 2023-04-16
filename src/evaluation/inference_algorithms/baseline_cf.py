@@ -16,7 +16,7 @@ from tensorflow import keras
 
 from src.commons.log_utils import LogData
 from src.commons.utils import extract_trace_sequences
-from src.evaluation.prepare_data import encode, get_symbol
+from src.evaluation.prepare_data import encode, get_act_prediction
 from src.training.train_common import CustomTransformer
 
 
@@ -55,7 +55,7 @@ def run_experiments(log_data: LogData, compliant_traces: pd.DataFrame, maxlen, p
                 y_o = y[1][0][0]
 
                 # undo one-hot encoding
-                prediction = get_symbol(cropped_line, y_char, target_indices_char, target_char_indices)
+                prediction = get_act_prediction(cropped_line, y_char, target_indices_char, target_char_indices)
                 predicted_outcome = '1' if y_o >= 0.5 else '0'
 
                 if prediction == '!':

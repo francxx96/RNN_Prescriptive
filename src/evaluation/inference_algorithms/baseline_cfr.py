@@ -16,7 +16,7 @@ from tensorflow import keras
 
 from src.commons.log_utils import LogData
 from src.commons.utils import extract_trace_sequences
-from src.evaluation.prepare_data import encode_with_group, get_symbol, get_group_symbol
+from src.evaluation.prepare_data import encode_with_group, get_predictions
 from src.training.train_common import CustomTransformer
 
 
@@ -58,14 +58,15 @@ def run_experiments(log_data: LogData, compliant_traces: pd.DataFrame, maxlen, p
             for i in range(predict_size - prefix_size):
                 enc = encode_with_group(cropped_line, cropped_line_group, maxlen, char_indices, char_indices_group)
                 y = model.predict(enc, verbose=0)  # make predictions
-                # split predictions into separate activity and time predictions
+                # split predictions into separate activity, resource and outcome predictions
                 y_char = y[0][0]
                 y_group = y[1][0]
                 y_o = y[2][0][0]
 
                 # undo one-hot encoding
-                prediction = get_symbol(cropped_line, y_char, target_indices_char, target_char_indices)
-                prediction_group = get_group_symbol(y_group, target_indices_char_group)
+                prediction, prediction_group = get_predictions(cropped_line, cropped_line_group, y_char, y_group,
+                                                               target_indices_char, target_char_indices,
+                                                               target_indices_char_group, target_char_indices_group)
                 predicted_outcome = '1' if y_o >= 0.5 else '0'
 
                 if prediction == '!':
