@@ -8,6 +8,7 @@ from pathlib import Path
 
 ascii_offset = 161
 beam_size = 3
+th_reduction_factor = 1
 
 data_folder = Path.cwd().parents[0] / 'data'
 input_folder = data_folder / 'input'

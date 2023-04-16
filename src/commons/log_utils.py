@@ -103,7 +103,7 @@ class LogData:
             self.res_name_key = 'org:group'
             self.timestamp_key = 'time:timestamp'
             self.compliance_th = 1.0
-            self.evaluation_th = self.compliance_th * 0.9
+            self.evaluation_th = self.compliance_th * shared.th_reduction_factor
             self.evaluation_prefix_start = 7
             self.evaluation_prefix_end = 7
 
@@ -125,7 +125,7 @@ class LogData:
             else:   # log_name == LogName.SEPSIS4
                 self.compliance_th = 0.77
 
-            self.evaluation_th = self.compliance_th * 0.9
+            self.evaluation_th = self.compliance_th * shared.th_reduction_factor
             self.evaluation_prefix_start = 10
             self.evaluation_prefix_end = 10
 
@@ -138,7 +138,7 @@ class LogData:
             self.res_name_key = 'Resource'
             self.timestamp_key = 'Complete Timestamp'
             self.compliance_th = 0.86
-            self.evaluation_th = self.compliance_th * 0.9
+            self.evaluation_th = self.compliance_th * shared.th_reduction_factor
             self.evaluation_prefix_start = 7
             self.evaluation_prefix_end = 7
 
