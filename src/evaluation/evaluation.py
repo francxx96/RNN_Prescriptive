@@ -62,6 +62,6 @@ def evaluate_all(log_data: LogData, models_folder: str):
                                                target_act_to_int, target_int_to_act, res_to_int, target_res_to_int,
                                                target_int_to_res, model_filename, output_filename, pn_filename)
             else:
-                raise RuntimeError(f"No model called {eval_algorithm}.")
+                raise RuntimeError(f"No evaluation algorithm called: '{eval_algorithm}'.")
 
             print("TIME TO FINISH --- %s seconds ---" % (time.time() - start_time))

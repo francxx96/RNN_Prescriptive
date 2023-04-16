@@ -106,16 +106,19 @@ class ResultParser:
     def _print_latex_table_header():
 
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Table header works only with \usepackage[table,xcdraw]{xcolor} in the LaTeX document
+        # Table header/footer works only with the following packages imported in the LaTeX document
+        #   \usepackage[table,xcdraw]{xcolor}
+        #   \usepackage{graphicx}
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         print('\\begin{table}[!hbt]')
+        print('\\resizebox{\\textwidth}{!}{')
         print('\\centering')
         print('\\begin{tabular}{|l||c|c|c|c|c|c||c|c|c|c|c|c||}')
         print('\\hline')
         print('\\textit{KB $\\rightarrow$} & '
-              '\\multicolumn{6}{c||}{\\textbf{baseline1}} & '
-              '\\multicolumn{6}{c||}{\\textbf{baseline2}} \\\\')
+              '\\multicolumn{6}{c||}{\\textbf{baseline}} & '
+              '\\multicolumn{6}{c||}{\\textbf{beamsearch}} \\\\')
         print('\\hline')
         print('\\textit{Encoding $\\rightarrow$} & '
               '\\multicolumn{3}{c|}{\\textbf{CF}} & '
@@ -135,6 +138,7 @@ class ResultParser:
     def _print_latex_table_footer(table_caption, table_label):
         print('\\hline')
         print('\\end{tabular}')
+        print('}')
         print('\\caption{' + table_caption + '}')
         print('\\label{' + table_label + '}')
         print('\\end{table}')
